@@ -26,7 +26,7 @@ cover the whole functionality provided by the devices, only the essentials.
 Build
 ==============
 The server is built with a cross-compiler running on a Linux system
-for the ARM target CPU of the power supplies.
+for the ARM target CPU of the device.
 
 The OPC UA stack needs to be downloaded and built. This can be done on
 the development system - there is no binary code produced at this stage.
