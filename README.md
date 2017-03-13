@@ -18,7 +18,7 @@ Functionality
 
 Project status
 ==============
-The server compiles and runs stabily on the power supply used for the tests.
+The server compiles and runs stabily on the devices used for the tests.
 The main functionality necessary to use the devices
 in an accelerator control system environment is provided. This does not
 cover the whole functionality provided by the devices, only the essentials.
