@@ -1,5 +1,3 @@
-# CAENels-FastPS-OPCUA
-
 OPC UA server running on the Libera Spark BPM electronics
 =========================================================
 
