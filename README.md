@@ -1,5 +1,3 @@
-# CAENels-FastPS-OPCUA
-
 OPC UA server running on the Libera Spark BPM electronics
 =========================================================
 
@@ -20,7 +18,7 @@ Functionality
 
 Project status
 ==============
-The server compiles and runs stabily on the power supply used for the tests.
+The server compiles and runs stabily on the devices used for the tests.
 The main functionality necessary to use the devices
 in an accelerator control system environment is provided. This does not
 cover the whole functionality provided by the devices, only the essentials.
@@ -28,7 +26,7 @@ cover the whole functionality provided by the devices, only the essentials.
 Build
 ==============
 The server is built with a cross-compiler running on a Linux system
-for the ARM target CPU of the power supplies.
+for the ARM target CPU of the device.
 
 The OPC UA stack needs to be downloaded and built. This can be done on
 the development system - there is no binary code produced at this stage.
