@@ -1,5 +1,5 @@
-OPC UA server running on the Libera Spark BPM electronics
-=========================================================
+OPC UA server for the Libera Spark BPM electronics
+=================================================
 
 This is an OPC UA server running on the
 [Libera Spark](http://www.i-tech.si/accelerators-instrumentation/spark-el-hl/)
