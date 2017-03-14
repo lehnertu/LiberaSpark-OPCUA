@@ -26,7 +26,9 @@ cover the whole functionality provided by the devices, only the essentials.
 Build
 ==============
 The server is built with a cross-compiler running on a Linux system
-for the ARM target CPU of the device.
+for the ARM target CPU of the device. An example file for the environment settings
+ist provided. In most cases it should be sufficient to edit the first line
+of that file to set the correct path to the toolchain.
 
 The OPC UA stack needs to be downloaded and built. This can be done on
 the development system - there is no binary code produced at this stage.
@@ -38,7 +40,7 @@ In addition the libxml2 library is required. It needs to be built
 and installed into the cross-target tool chain.
 
 A makefile is not yet provided, just a few lines are required to build the server.
-- source ../tools/environment
+- source ./environment
 - $CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c
 - $CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c
 - $CC -std=c99 -c libera_opcua.c
