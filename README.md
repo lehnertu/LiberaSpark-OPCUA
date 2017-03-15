@@ -1,5 +1,4 @@
-OPC UA server for the Libera Spark BPM electronics
-=================================================
+# OPC UA server for the Libera Spark BPM electronics
 
 This is an OPC UA server running on the
 [Libera Spark](http://www.i-tech.si/accelerators-instrumentation/spark-el-hl/)
@@ -8,8 +7,7 @@ beam position processors for remote control of the devices.
 It is based on the [Open62541](https://github.com/open62541/open62541/)
 open source implementation of OPC UA.
 
-Functionality
-=============
+# Functionality
 - Provides an OPC-UA server at TCP/IP port 16664.
 - Access to device is handled via the internal MCI facility.
 - Server configuration is loadad from file /nvram/cfg/opcua.xml
