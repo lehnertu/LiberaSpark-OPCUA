@@ -58,7 +58,7 @@ To use the MCI facility to access the internal instrument data a few libraries p
 - `libera-base3.0-dev_3.0-426+r23640+helium_armelx.deb`
 - `libera-mci3.0-dev_3.0-426+r23640+helium_armelx.deb`
 
-The packages were manually extracted and theh eaders copied into local directories for MCI programming
+The packages were manually extracted and the headers copied into local directories for MCI programming
 - `LiberaSpark-OPCUA/istd/*`
 - `LiberaSpark-OPCUA/mci/*`
 - `LiberaSpark-OPCUA/isig/*`
