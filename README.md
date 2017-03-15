@@ -57,19 +57,24 @@ To use the MCI facility to access the internal instrument data a few libraries p
 [Instrumentation Technologies]http://www.i-tech.si/. These were obtained in two files
 - `libera-base3.0-dev_3.0-426+r23640+helium_armelx.deb`
 - `libera-mci3.0-dev_3.0-426+r23640+helium_armelx.deb`
+
 The packages were manually extracted and theh eaders copied into local directories for MCI programming
 - `LiberaSpark-OPCUA/istd/*`
 - `LiberaSpark-OPCUA/mci/*`
 - `LiberaSpark-OPCUA/isig/*`
+
 The binaries can be copied from the instrument
 - from `/opt/libera/lib/*`
 - to `$SDKTARGETSYSROOT/opt/libera/lib`
+
 In addition, one needs to create symbolic links like `ln -s libliberamci.so.3.0 libliberamci.so`
+
 The libraries obtained this way should include
 - `liberamci.so`
 - `liberaisig.so`
 - `liberaistd.so`
 - `liberainet.so`
+
 In the same way another 3 binary libraries need to be installed
 - `$SDKTARGETSYSROOT/usr/lib/libomniORB4.so.2.0`
 - `$SDKTARGETSYSROOT/usr/lib/libomnithread.so.4.0`
