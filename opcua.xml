@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <stream>
+        <source ip="10.66.67.20" port="1024"/>
+        <target ip="10.66.67.1" port="16720"/>
+    </stream>
+    <opcua>
+        <device name="LA1-DSL.02"/>
+    </opcua>
+</configuration>
+
