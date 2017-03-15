@@ -41,7 +41,7 @@ and installed into the cross-target tool chain.
 - `tar -xvzf libxml2-2.9.2.tar.gz`
 - `cd libxml2-2.9.4`
 - `source ../environment`
-- `./configure --host=arm-linux --without-iconv --without-python --prefix=/home/lehnertu/Libera/tools/poky/1.8/sysroots/cortexa9-vfp-neon-poky-linux-gnueabi/usr/`
+- `./configure --host=arm-linux --without-iconv --without-python --prefix=$SDKTARGETSYSROOT/usr/`
 - `make`
 - `make install`
 
