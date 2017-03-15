@@ -14,26 +14,27 @@ open source implementation of OPC UA.
 - The /dev/libera.strm0 is captured to obtain the measured data.
 - When enabled, all data from strm0 is sent out to an UDP output stream.
 
-Project status
-==============
+# Project status
 The server compiles and runs stabily on the devices used for the tests.
 The main functionality necessary to use the devices
 in an accelerator control system environment is provided. This does not
 cover the whole functionality provided by the devices, only the essentials.
 
-Build
-==============
+# Build
+## Tool chain
 The server is built with a cross-compiler running on a Linux system
 for the ARM target CPU of the device. An example file for the environment settings
 ist provided. In most cases it should be sufficient to edit the first line
 of that file to set the correct path to the toolchain.
 
-The OPC UA stack needs to be downloaded and built. This can be done on
-the development system - there is no binary code produced at this stage.
+## Protocol stack
+The OPC UA stack needs to be downloaded from [Open62541](https://github.com/open62541/open62541/) and built.
+This can be done on the development system - there is no binary code produced at this stage.
 The complete stack is obtained in two (amalgamated) files.
 - open62541.h
 - open62541.c
 
+## Libraries
 In addition the libxml2 library is required. It needs to be built
 and installed into the cross-target tool chain.
 
