@@ -97,7 +97,11 @@ For istallation a few files need to be copied onto the device:
 - `opcua.xml` configuration file in `/nvram/cfg/opcua.xml`
 - `/usr/lib/libxml2.so.2`
 
-The server can then be run by executing /opt/opcua/opcuaserver.
+The file `opcua.xml` needs to be edited. It containes the settings op IP addresses and port numbers for the
+UDP data stream and the device name.
+
+The server can then be run by executing /opt/opcua/opcuaserver. It is recommended to call it by
+an init script at boot time of the device.
 
 # Testing
 For a first test of the server an universal OPC UA client like
