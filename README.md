@@ -47,17 +47,16 @@ and installed into the cross-target tool chain.
 
 ## Compile and link the server
 A makefile is not yet provided, just a few lines are required to build the server.
-- source ./environment
-- $CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c
-- $CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c
-- $CC -std=c99 -c libera_opcua.c
-- $CC -std=c99 -c open62541.c
-- $CXX -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2
+- `source ./environment`
+- `$CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c`
+- `$CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c`
+- `$CC -std=c99 -c libera_opcua.c`
+- `$CC -std=c99 -c open62541.c`
+- `$CXX -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2
        -L$SDKTARGETSYSROOT/opt/libera/lib -lliberamci -lliberaisig -lliberaistd -lliberainet
-       -lomniORB4 -lomniDynamic4 -lomnithread
+       -lomniORB4 -lomniDynamic4 -lomnithread`
 
-Installation
-============
+# Installation
 For istallation a few files need to be copied onto the device:
 - opcuaserver binary installed in /opt/opcua/opcuaserver
 - opcua.xml configuration file in /nvram/cfg/opcua.xml
@@ -65,12 +64,10 @@ For istallation a few files need to be copied onto the device:
 
 The server can then be run by executing /opt/opcua/opcuaserver.
 
-Testing
-=======
+# Testing
 For a first test of the server an universal OPC UA client like
 [UaExpert](https://www.unified-automation.com/products/development-tools/uaexpert.html) is recommended.
 
-TODO
-====
+# TODO - known bugs
 - clean exit problem when UDP stream is never opened
 
