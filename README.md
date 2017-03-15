@@ -54,7 +54,7 @@ This package was unpacked manually and the necessary files installed from
 
 ## Libera libraries (for MCI)
 To use the MCI facility to access the internal instrument data a few libraries proprietary to
-[Instrumentation Technologies]http://www.i-tech.si/. These were obtained in two files
+[Instrumentation Technologies](http://www.i-tech.si/). These were obtained in two files
 - `libera-base3.0-dev_3.0-426+r23640+helium_armelx.deb`
 - `libera-mci3.0-dev_3.0-426+r23640+helium_armelx.deb`
 
