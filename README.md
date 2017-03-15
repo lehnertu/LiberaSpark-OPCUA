@@ -45,6 +45,13 @@ and installed into the cross-target tool chain.
 - `make`
 - `make install`
 
+
+### Install boost libraries into the toolchain
+Depending on the version of the toolchain some required boost libraries need to be installed.
+At present we use the version `libboost1.55-dev_1.55.0+dfsg-3_armel.deb`.
+This package was unpacked manually and the necessary files installed from
+`.../usr/include/boost/` into `$SDKTARGETSYSROOT/usr/include`
+
 ## Compile and link the server
 A makefile is not yet provided, just a few lines are required to build the server.
 - `source ./environment`
