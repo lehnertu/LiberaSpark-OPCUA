@@ -35,8 +35,16 @@ The complete stack is obtained in two (amalgamated) files.
 - open62541.c
 
 ## Libraries
+### Compile and install libxml2 into the toolchain
 In addition the libxml2 library is required. It needs to be built
 and installed into the cross-target tool chain.
+'tar -xvzf libxml2-2.9.2.tar.gz'
+'cd libxml2-2.9.4'
+'source ../environment'
+'./configure --host=arm-linux --without-iconv --without-python --prefix=/home/lehnertu/Libera/tools/poky/1.8/sysroots/cortexa9-vfp-neon-poky-linux-gnueabi/usr/'
+'make'
+'make install'
+
 
 A makefile is not yet provided, just a few lines are required to build the server.
 - source ./environment
