@@ -52,6 +52,29 @@ At present we use the version `libboost1.55-dev_1.55.0+dfsg-3_armel.deb`.
 This package was unpacked manually and the necessary files installed from
 `.../usr/include/boost/` into `$SDKTARGETSYSROOT/usr/include`
 
+## Libera libraries (for MCI)
+To use the MCI facility to access the internal instrument data a few libraries proprietary to
+[Instrumentation Technologies]http://www.i-tech.si/. These were obtained in two files
+- `libera-base3.0-dev_3.0-426+r23640+helium_armelx.deb`
+- `libera-mci3.0-dev_3.0-426+r23640+helium_armelx.deb`
+The packages were manually extracted and theh eaders copied into local directories for MCI programming
+- `LiberaSpark-OPCUA/istd/*`
+- `LiberaSpark-OPCUA/mci/*`
+- `LiberaSpark-OPCUA/isig/*`
+The binaries can be copied from the instrument
+- from `/opt/libera/lib/*`
+- to `$SDKTARGETSYSROOT/opt/libera/lib`
+In addition, one needs to create symbolic links like `ln -s libliberamci.so.3.0 libliberamci.so`
+The libraries obtained this way should include
+- `liberamci.so`
+- `liberaisig.so`
+- `liberaistd.so`
+- `liberainet.so`
+In the same way another 3 binary libraries need to be installed
+- `$SDKTARGETSYSROOT/usr/lib/libomniORB4.so.2.0`
+- `$SDKTARGETSYSROOT/usr/lib/libomnithread.so.4.0`
+- `$SDKTARGETSYSROOT/usr/lib/libomniDynamic4.so.2.0`
+
 ## Compile and link the server
 A makefile is not yet provided, just a few lines are required to build the server.
 - `source ./environment`
@@ -65,9 +88,9 @@ A makefile is not yet provided, just a few lines are required to build the serve
 
 # Installation
 For istallation a few files need to be copied onto the device:
-- opcuaserver binary installed in /opt/opcua/opcuaserver
-- opcua.xml configuration file in /nvram/cfg/opcua.xml
-- libxml2.so.2 in /usr/lib/
+- `opcuaserver` binary installed to `/opt/opcua/opcuaserver`
+- `opcua.xml` configuration file in `/nvram/cfg/opcua.xml`
+- `/usr/lib/libxml2.so.2`
 
 The server can then be run by executing /opt/opcua/opcuaserver.
 
