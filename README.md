@@ -107,6 +107,9 @@ an init script at boot time of the device.
 For a first test of the server an universal OPC UA client like
 [UaExpert](https://www.unified-automation.com/products/development-tools/uaexpert.html) is recommended.
 
+An example LabView client is provided demonstrating the visualization of BPM measurements via the OPC UA
+transport channel.
+
 # TODO - known bugs
 - clean exit problem when UDP stream is never opened
 
