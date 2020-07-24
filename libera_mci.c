@@ -212,14 +212,18 @@ int mci_shutdown()
 }
 
 UA_StatusCode mci_get_dev_freq(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dev_freq.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -231,14 +235,18 @@ UA_StatusCode mci_get_dev_freq(
 }
 
 UA_StatusCode mci_get_dsp_enable(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     bool val;
     if(node_dsp_enable.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Boolean*)(&val), &UA_TYPES[UA_TYPES_BOOLEAN]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -271,14 +279,18 @@ UA_StatusCode mci_set_dsp_enable(
 }
 
 UA_StatusCode mci_get_dsp_thr1(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dsp_thr1.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -311,14 +323,18 @@ UA_StatusCode mci_set_dsp_thr1(
 }
 
 UA_StatusCode mci_get_dsp_pre(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dsp_pre.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -351,14 +367,18 @@ UA_StatusCode mci_set_dsp_pre(
 }
 
 UA_StatusCode mci_get_dsp_post1(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dsp_post1.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -391,14 +411,18 @@ UA_StatusCode mci_set_dsp_post1(
 }
 
 UA_StatusCode mci_get_dsp_timeout(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dsp_timeout.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -431,14 +455,18 @@ UA_StatusCode mci_set_dsp_timeout(
 }
 
 UA_StatusCode mci_get_dsp_averaging(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_dsp_averaging.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -471,14 +499,18 @@ UA_StatusCode mci_set_dsp_averaging(
 }
 
 UA_StatusCode mci_get_maxadc(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     unsigned int val;
     if(node_maxadc.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -490,14 +522,18 @@ UA_StatusCode mci_get_maxadc(
 }
 
 UA_StatusCode mci_get_cal_attenuation(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     int64_t val;
     if(node_cal_attenuation.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Int64*)(&val), &UA_TYPES[UA_TYPES_INT64]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -530,14 +566,18 @@ UA_StatusCode mci_set_cal_attenuation(
 }
 
 UA_StatusCode mci_get_cal_ka(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_ka.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -570,14 +610,18 @@ UA_StatusCode mci_set_cal_ka(
 }
 
 UA_StatusCode mci_get_cal_kb(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_kb.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -610,14 +654,18 @@ UA_StatusCode mci_set_cal_kb(
 }
 
 UA_StatusCode mci_get_cal_kc(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_kc.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -650,14 +698,18 @@ UA_StatusCode mci_set_cal_kc(
 }
 
 UA_StatusCode mci_get_cal_kd(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_kd.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -690,14 +742,18 @@ UA_StatusCode mci_set_cal_kd(
 }
 
 UA_StatusCode mci_get_cal_linx(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_linx.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -730,14 +786,18 @@ UA_StatusCode mci_set_cal_linx(
 }
 
 UA_StatusCode mci_get_cal_liny(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_liny.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -770,14 +830,18 @@ UA_StatusCode mci_set_cal_liny(
 }
 
 UA_StatusCode mci_get_cal_linq(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_linq.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -810,14 +874,18 @@ UA_StatusCode mci_set_cal_linq(
 }
 
 UA_StatusCode mci_get_cal_lins(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_lins.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -850,14 +918,18 @@ UA_StatusCode mci_set_cal_lins(
 }
 
 UA_StatusCode mci_get_cal_offx(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_offx.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -890,14 +962,18 @@ UA_StatusCode mci_set_cal_offx(
 }
 
 UA_StatusCode mci_get_cal_offy(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_offy.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -930,14 +1006,18 @@ UA_StatusCode mci_set_cal_offy(
 }
 
 UA_StatusCode mci_get_cal_offq(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_offq.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else
@@ -970,14 +1050,18 @@ UA_StatusCode mci_set_cal_offq(
 }
 
 UA_StatusCode mci_get_cal_offs(
-    void *handle, const UA_NodeId nodeid,
-    UA_Boolean sourceTimeStamp, const UA_NumericRange *range, UA_DataValue *dataValue)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
 {
     double val;
     if(node_cal_offs.GetValue(val))
     {
-        dataValue->hasValue = true;
         UA_Variant_setScalarCopy(&dataValue->value, (UA_Double*)(&val), &UA_TYPES[UA_TYPES_DOUBLE]);
+        dataValue->hasValue = true;
         return UA_STATUSCODE_GOOD;
     }
     else

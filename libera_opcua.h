@@ -42,37 +42,65 @@ extern "C" {
 /* for OPC-UA data sources         */
 /***********************************/
 
-UA_StatusCode
-readBool( void *handle, const UA_NodeId nodeid, UA_Boolean sourceTimeStamp,
-          const UA_NumericRange *range, UA_DataValue *dataValue);
+UA_StatusCode readBool(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
 
-UA_StatusCode
-writeBool(void *handle, const UA_NodeId nodeid,
-          const UA_Variant *data, const UA_NumericRange *range);
+UA_StatusCode writeBool(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
-UA_StatusCode
-readDouble( void *handle, const UA_NodeId nodeid, UA_Boolean sourceTimeStamp,
-            const UA_NumericRange *range, UA_DataValue *dataValue);
+UA_StatusCode readDouble(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
 
-UA_StatusCode
-writeDouble(void *handle, const UA_NodeId nodeid,
-            const UA_Variant *data, const UA_NumericRange *range);
+UA_StatusCode writeDouble(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
-UA_StatusCode
-readInt32( void *handle, const UA_NodeId nodeid, UA_Boolean sourceTimeStamp,
-           const UA_NumericRange *range, UA_DataValue *dataValue);
+UA_StatusCode readInt32(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
 
-UA_StatusCode
-writeInt32(void *handle, const UA_NodeId nodeid,
-           const UA_Variant *data, const UA_NumericRange *range);
+UA_StatusCode writeInt32(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
-UA_StatusCode
-readUInt32( void *handle, const UA_NodeId nodeid, UA_Boolean sourceTimeStamp,
-            const UA_NumericRange *range, UA_DataValue *dataValue);
+UA_StatusCode readUInt32(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
 
-UA_StatusCode
-writeUInt32(void *handle, const UA_NodeId nodeid,
-            const UA_Variant *data, const UA_NumericRange *range);
+UA_StatusCode writeUInt32(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 #ifdef __cplusplus
 } // extern "C"
