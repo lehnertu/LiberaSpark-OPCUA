@@ -12,7 +12,7 @@ open source implementation of OPC UA.
 - Access to device is handled via the internal MCI facility.
 - Server configuration is loadad from file /nvram/cfg/opcua.xml
 - The /dev/libera.strm0 is captured to obtain the measured data.
-- When enabled, all data from strm0 is sent out to an UDP output stream.
+- The data stream is no longer copied to an output stream, the second (fast) network interface is used instead.
 
 # Project status
 The server compiles and runs stabily on the devices used for the tests.
@@ -62,6 +62,7 @@ The packages were manually extracted and the headers copied into local directori
 - `LiberaSpark-OPCUA/istd/*`
 - `LiberaSpark-OPCUA/mci/*`
 - `LiberaSpark-OPCUA/isig/*`
+- `LiberaSpark-OPCUA/inet/*`
 
 The binaries can be copied from the instrument
 - from `/opt/libera/lib/*`
@@ -81,21 +82,13 @@ In the same way another 3 binary libraries need to be installed
 - `$SDKTARGETSYSROOT/usr/lib/libomniDynamic4.so.2.0`
 
 ## Compile and link the server
-A makefile is not yet provided, just a few lines are required to build the server.
-- `source ./environment`
-- `$CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c`
-- `$CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c`
-- `$CC -std=c99 -c libera_opcua.c`
-- `$CC -std=c99 -c open62541.c`
-- `$CXX -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2
-       -L$SDKTARGETSYSROOT/opt/libera/lib -lliberamci -lliberaisig -lliberaistd -lliberainet
-       -lomniORB4 -lomniDynamic4 -lomnithread`
+A Makefile is provided which includes the environment settings for the tool chain.
+The first line of the Makefile needs to be edited to provide the correct location of the tool chain.
 
 # Installation
 For istallation a few files need to be copied onto the device:
 - `opcuaserver` binary installed to `/opt/opcua/opcuaserver`
 - `opcua.xml` configuration file in `/nvram/cfg/opcua.xml`
-- `/usr/lib/libxml2.so.2`
 
 The file `opcua.xml` needs to be edited. It containes the settings op IP addresses and port numbers for the
 UDP data stream and the device name.
