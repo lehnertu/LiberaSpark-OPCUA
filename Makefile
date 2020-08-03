@@ -24,10 +24,10 @@ headers=open62541.h \
 	libera_mci.h \
 	libera_opcua.h
 
-opcuaserver : OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o $(headers)
+opcuaserver : OpcUaServer.o open62541.o libera_mci.o libera_opcua.o $(headers)
 	$(CXX) -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2 -L$(SDKTARGETSYSROOT)/opt/libera/lib -lliberamci -lliberaisig -lliberaistd -lliberainet -lomniORB4 -lomniDynamic4 -lomnithread
 
-OpcUaStreamServer.o : OpcUaStreamServer.c $(headers)
+OpcUaServer.o : OpcUaServer.c $(headers)
 	$(CC) -std=c99 -c -I $(SDKTARGETSYSROOT)/usr/include/libxml2/ OpcUaStreamServer.c
 
 open62541.o : open62541.c $(headers)
