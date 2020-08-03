@@ -60,7 +60,11 @@ UA_StatusCode mci_get_dsp_enable(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_enable(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_dsp_thr1(
     UA_Server *server,
@@ -70,7 +74,11 @@ UA_StatusCode mci_get_dsp_thr1(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_thr1(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_dsp_pre(
     UA_Server *server,
@@ -80,7 +88,11 @@ UA_StatusCode mci_get_dsp_pre(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_pre(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_dsp_post1(
     UA_Server *server,
@@ -90,7 +102,11 @@ UA_StatusCode mci_get_dsp_post1(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_post1(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_dsp_timeout(
     UA_Server *server,
@@ -100,7 +116,11 @@ UA_StatusCode mci_get_dsp_timeout(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_timeout(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_dsp_averaging(
     UA_Server *server,
@@ -110,7 +130,11 @@ UA_StatusCode mci_get_dsp_averaging(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_averaging(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_maxadc(
     UA_Server *server,
@@ -128,7 +152,11 @@ UA_StatusCode mci_get_cal_attenuation(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_attenuation(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_ka(
     UA_Server *server,
@@ -138,7 +166,11 @@ UA_StatusCode mci_get_cal_ka(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_ka(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_kb(
     UA_Server *server,
@@ -148,7 +180,11 @@ UA_StatusCode mci_get_cal_kb(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_kb(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_kc(
     UA_Server *server,
@@ -158,7 +194,11 @@ UA_StatusCode mci_get_cal_kc(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_kc(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_kd(
     UA_Server *server,
@@ -168,7 +208,11 @@ UA_StatusCode mci_get_cal_kd(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_kd(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_linx(
     UA_Server *server,
@@ -178,7 +222,11 @@ UA_StatusCode mci_get_cal_linx(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_linx(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_liny(
     UA_Server *server,
@@ -188,7 +236,11 @@ UA_StatusCode mci_get_cal_liny(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_liny(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_linq(
     UA_Server *server,
@@ -198,7 +250,11 @@ UA_StatusCode mci_get_cal_linq(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_linq(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_lins(
     UA_Server *server,
@@ -208,7 +264,11 @@ UA_StatusCode mci_get_cal_lins(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_lins(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_offx(
     UA_Server *server,
@@ -218,7 +278,11 @@ UA_StatusCode mci_get_cal_offx(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_offx(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_offy(
     UA_Server *server,
@@ -228,7 +292,11 @@ UA_StatusCode mci_get_cal_offy(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_offy(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_offq(
     UA_Server *server,
@@ -238,7 +306,11 @@ UA_StatusCode mci_get_cal_offq(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_offq(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 UA_StatusCode mci_get_cal_offs(
     UA_Server *server,
@@ -248,7 +320,11 @@ UA_StatusCode mci_get_cal_offs(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_offs(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range);
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
 
 #ifdef __cplusplus
 } // extern "C"

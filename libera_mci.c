@@ -258,11 +258,15 @@ UA_StatusCode mci_get_dsp_enable(
 }
 
 UA_StatusCode mci_set_dsp_enable(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->value.data != 0))
     {
-        bool val = *(bool*)data->data;
+        bool val = *(bool*)data->value.data;
         if(node_dsp_enable.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -274,6 +278,7 @@ UA_StatusCode mci_set_dsp_enable(
     }
     else
     {
+		printf("data error : mci_set_dsp_enable\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -302,11 +307,15 @@ UA_StatusCode mci_get_dsp_thr1(
 }
 
 UA_StatusCode mci_set_dsp_thr1(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_UINT32]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
     {
-        unsigned int val = *(unsigned int*)data->data;
+        unsigned int val = *(unsigned int*)data->value.data;
         if(node_dsp_thr1.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -318,6 +327,7 @@ UA_StatusCode mci_set_dsp_thr1(
     }
     else
     {
+		printf("data error : mci_set_dsp_thr1\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -346,11 +356,15 @@ UA_StatusCode mci_get_dsp_pre(
 }
 
 UA_StatusCode mci_set_dsp_pre(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_UINT32]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
     {
-        unsigned int val = *(unsigned int*)data->data;
+        unsigned int val = *(unsigned int*)data->value.data;
         if(node_dsp_pre.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -362,6 +376,7 @@ UA_StatusCode mci_set_dsp_pre(
     }
     else
     {
+		printf("data error : mci_set_dsp_pre\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -390,11 +405,15 @@ UA_StatusCode mci_get_dsp_post1(
 }
 
 UA_StatusCode mci_set_dsp_post1(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_UINT32]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
     {
-        unsigned int val = *(unsigned int*)data->data;
+        unsigned int val = *(unsigned int*)data->value.data;
         if(node_dsp_post1.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -406,6 +425,7 @@ UA_StatusCode mci_set_dsp_post1(
     }
     else
     {
+		printf("data error : mci_set_dsp_post1\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -434,11 +454,15 @@ UA_StatusCode mci_get_dsp_timeout(
 }
 
 UA_StatusCode mci_set_dsp_timeout(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_UINT32]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
     {
-        unsigned int val = *(unsigned int*)data->data;
+        unsigned int val = *(unsigned int*)data->value.data;
         if(node_dsp_timeout.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -450,6 +474,7 @@ UA_StatusCode mci_set_dsp_timeout(
     }
     else
     {
+		printf("data error : mci_set_dsp_timeout\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -478,11 +503,15 @@ UA_StatusCode mci_get_dsp_averaging(
 }
 
 UA_StatusCode mci_set_dsp_averaging(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_UINT32]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
     {
-        unsigned int val = *(unsigned int*)data->data;
+        unsigned int val = *(unsigned int*)data->value.data;
         if(node_dsp_averaging.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -494,6 +523,7 @@ UA_StatusCode mci_set_dsp_averaging(
     }
     else
     {
+		printf("data error : mci_set_dsp_averaging\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -545,11 +575,15 @@ UA_StatusCode mci_get_cal_attenuation(
 }
 
 UA_StatusCode mci_set_cal_attenuation(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_INT64]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_INT64]) && (data->value.data != 0))
     {
-        int64_t val = *(int64_t*)data->data;
+        int64_t val = *(int64_t*)data->value.data;
         if(node_cal_attenuation.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -561,6 +595,7 @@ UA_StatusCode mci_set_cal_attenuation(
     }
     else
     {
+		printf("data error : mci_set_cal_attenuation\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -589,11 +624,15 @@ UA_StatusCode mci_get_cal_ka(
 }
 
 UA_StatusCode mci_set_cal_ka(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_ka.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -605,6 +644,7 @@ UA_StatusCode mci_set_cal_ka(
     }
     else
     {
+		printf("data error : mci_set_cal_ka\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -633,11 +673,15 @@ UA_StatusCode mci_get_cal_kb(
 }
 
 UA_StatusCode mci_set_cal_kb(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_kb.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -649,6 +693,7 @@ UA_StatusCode mci_set_cal_kb(
     }
     else
     {
+		printf("data error : mci_set_cal_kb\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -677,11 +722,15 @@ UA_StatusCode mci_get_cal_kc(
 }
 
 UA_StatusCode mci_set_cal_kc(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_kc.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -693,6 +742,7 @@ UA_StatusCode mci_set_cal_kc(
     }
     else
     {
+		printf("data error : mci_set_cal_kc\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -721,11 +771,15 @@ UA_StatusCode mci_get_cal_kd(
 }
 
 UA_StatusCode mci_set_cal_kd(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_kd.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -737,6 +791,7 @@ UA_StatusCode mci_set_cal_kd(
     }
     else
     {
+		printf("data error : mci_set_cal_kd\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -765,11 +820,15 @@ UA_StatusCode mci_get_cal_linx(
 }
 
 UA_StatusCode mci_set_cal_linx(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_linx.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -781,6 +840,7 @@ UA_StatusCode mci_set_cal_linx(
     }
     else
     {
+		printf("data error : mci_set_cal_linx\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -809,11 +869,15 @@ UA_StatusCode mci_get_cal_liny(
 }
 
 UA_StatusCode mci_set_cal_liny(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_liny.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -825,6 +889,7 @@ UA_StatusCode mci_set_cal_liny(
     }
     else
     {
+		printf("data error : mci_set_cal_liny\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -853,11 +918,15 @@ UA_StatusCode mci_get_cal_linq(
 }
 
 UA_StatusCode mci_set_cal_linq(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_linq.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -869,6 +938,7 @@ UA_StatusCode mci_set_cal_linq(
     }
     else
     {
+		printf("data error : mci_set_cal_linq\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -897,11 +967,15 @@ UA_StatusCode mci_get_cal_lins(
 }
 
 UA_StatusCode mci_set_cal_lins(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_lins.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -913,6 +987,7 @@ UA_StatusCode mci_set_cal_lins(
     }
     else
     {
+		printf("data error : mci_set_cal_lins\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -941,11 +1016,15 @@ UA_StatusCode mci_get_cal_offx(
 }
 
 UA_StatusCode mci_set_cal_offx(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_offx.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -957,6 +1036,7 @@ UA_StatusCode mci_set_cal_offx(
     }
     else
     {
+		printf("data error : mci_set_cal_offx\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -985,11 +1065,15 @@ UA_StatusCode mci_get_cal_offy(
 }
 
 UA_StatusCode mci_set_cal_offy(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_offy.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -1001,6 +1085,7 @@ UA_StatusCode mci_set_cal_offy(
     }
     else
     {
+		printf("data error : mci_set_cal_offy\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -1029,11 +1114,15 @@ UA_StatusCode mci_get_cal_offq(
 }
 
 UA_StatusCode mci_set_cal_offq(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_offq.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -1045,6 +1134,7 @@ UA_StatusCode mci_set_cal_offq(
     }
     else
     {
+		printf("data error : mci_set_cal_offq\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -1073,11 +1163,15 @@ UA_StatusCode mci_get_cal_offs(
 }
 
 UA_StatusCode mci_set_cal_offs(
-    void *handle, const UA_NodeId nodeid, const UA_Variant *data, const UA_NumericRange *range)
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
 {
-    if(UA_Variant_isScalar(data) && (data->type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->data != 0))
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_DOUBLE]) && (data->value.data != 0))
     {
-        double val = *(double*)data->data;
+        double val = *(double*)data->value.data;
         if(node_cal_offs.SetValue(val))
             return UA_STATUSCODE_GOOD;
         else
@@ -1089,6 +1183,7 @@ UA_StatusCode mci_set_cal_offs(
     }
     else
     {
+		printf("data error : mci_set_cal_offs\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
