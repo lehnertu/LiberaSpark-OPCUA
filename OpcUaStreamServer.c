@@ -50,26 +50,20 @@ SOFTWARE.
  *  
  *  @section Build
  *  The server is built with a cross-compiler running on a Linux system
- *  for the ARM target CPU of the power supplies.
+ *  for the ARM target CPU of the device.
  *  
  *  The OPC UA stack needs to be downloaded and built. This can be done on
  *  the development system - there is no binary code produced at this stage.
  *  The complete stack is obtained in two (amalgamated) files.
  *  - open62541.h
  *  - open62541.c
+ *  Presently, we use version 1.1 of the OPC UA stack.
  *  
  *  In addition the libxml2 library is required. It needs to be built
  *  and installed into the cross-target tool chain.
  *  
- *  A makefile is not yet provided, just a few lines are required to build the server.
- *  - source ../tools/environment
- *  - $CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c
- *  - $CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c
- *  - $CC -std=c99 -c libera_opcua.c
- *  - $CC -std=c99 -c open62541.c
- *  - $CXX -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2
- *        -L$SDKTARGETSYSROOT/opt/libera/lib -lliberamci -lliberaisig -lliberaistd -lliberainet
- *        -lomniORB4 -lomniDynamic4 -lomnithread
+ *  A Makefile is provided, normally just the first line has to be edited to point to
+ *  the correct location of the tool chain.
  *
  *  @section Installation
  *  For istallation a few files need to be copied onto the device:
