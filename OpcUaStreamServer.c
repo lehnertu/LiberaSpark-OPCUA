@@ -50,26 +50,20 @@ SOFTWARE.
  *  
  *  @section Build
  *  The server is built with a cross-compiler running on a Linux system
- *  for the ARM target CPU of the power supplies.
+ *  for the ARM target CPU of the device.
  *  
  *  The OPC UA stack needs to be downloaded and built. This can be done on
  *  the development system - there is no binary code produced at this stage.
  *  The complete stack is obtained in two (amalgamated) files.
  *  - open62541.h
  *  - open62541.c
+ *  Presently, we use version 1.1 of the OPC UA stack.
  *  
  *  In addition the libxml2 library is required. It needs to be built
  *  and installed into the cross-target tool chain.
  *  
- *  A makefile is not yet provided, just a few lines are required to build the server.
- *  - source ../tools/environment
- *  - $CC -std=c99 -c -I $SDKTARGETSYSROOT/usr/include/libxml2/ OpcUaStreamServer.c
- *  - $CXX -std=gnu++11 -c -I. -L$SDKTARGETSYSROOT/opt/libera/lib libera_mci.c
- *  - $CC -std=c99 -c libera_opcua.c
- *  - $CC -std=c99 -c open62541.c
- *  - $CXX -o opcuaserver OpcUaStreamServer.o open62541.o libera_mci.o libera_opcua.o -lpthread -lxml2
- *        -L$SDKTARGETSYSROOT/opt/libera/lib -lliberamci -lliberaisig -lliberaistd -lliberainet
- *        -lomniORB4 -lomniDynamic4 -lomnithread
+ *  A Makefile is provided, normally just the first line has to be edited to point to
+ *  the correct location of the tool chain.
  *
  *  @section Installation
  *  For istallation a few files need to be copied onto the device:
@@ -146,8 +140,6 @@ struct single_pass_data {
 
 // the OPC-UA server
 UA_Server *server;
-// log to the console
-UA_Logger logger = Logger_Stdout;
 
 // primary storage of the current values
 static int32_t SP_va = 0;
@@ -287,7 +279,7 @@ void Die(char *mess)
 static void stopHandler(int signal)
 {
     printf("\nOpcUaServer : received ctrl-c\n");
-    UA_LOG_INFO(logger, UA_LOGCATEGORY_SERVER, "received ctrl-c");
+    UA_LOG_INFO(UA_Log_Stdout, UA_LOGCATEGORY_SERVER, "received ctrl-c");
     running = 0;
 }
 
@@ -384,24 +376,29 @@ int closeStreamUDP()
 
 // special datasource write routine for the Stream/Transmit Variable
 // when writing to this datasource the UDP data stream is opened/closed appropriately
-static UA_StatusCode
-writeTransmit(void *handle, const UA_NodeId nodeid,
-              const UA_Variant *data, const UA_NumericRange *range) {
-    if(UA_Variant_isScalar(data) && data->type == &UA_TYPES[UA_TYPES_BOOLEAN] && data->data)
+UA_StatusCode writeTransmit(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->value.data != 0))
     {
-        bool opcl = *(bool*)data->data;
-        *(UA_Boolean*)handle = (UA_Boolean)opcl;
-        // *(UA_Boolean*)handle = *(UA_Boolean*)data->data;
+        bool opcl = *(bool*)data->value.data;
+		StreamTransmit = opcl;		
         if (opcl == true)
             StreamError = openStreamUDP();
         if (opcl == false)
             StreamError = closeStreamUDP();
+        return UA_STATUSCODE_GOOD;
     }
     else
     {
         StreamError = -2;
+		printf("data error : writeTransmit\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
-    return UA_STATUSCODE_GOOD;
 }
 
 // read the data from the input stream
@@ -632,12 +629,20 @@ int main(int argc, char *argv[])
     signal(SIGTERM, stopHandler);
 
     // configure the UA server
-    UA_ServerConfig config = UA_ServerConfig_standard;
-    UA_ServerNetworkLayer nl = UA_ServerNetworkLayerTCP(UA_ConnectionConfig_standard, 16664);
-    config.logger = logger;
-    config.networkLayers = &nl;
-    config.networkLayersSize = 1;
-    server = UA_Server_new(config);
+    UA_ServerConfig config;
+    memset(&config, 0, sizeof(UA_ServerConfig));
+    UA_StatusCode res = UA_ServerConfig_setMinimal(&config, 16664, NULL);
+    if(res != UA_STATUSCODE_GOOD)
+    {
+        printf("UA_ServerConfig_setMinimal() error %8x\n", res);
+        exit(-1);
+    }
+    UA_Server *server = UA_Server_newWithConfig(&config);
+    if(!server)
+    {
+        printf("UA_Server_newWithConfig() failed\n");
+        exit(-1);
+    }
 
     /**************************
     Device
@@ -645,7 +650,7 @@ int main(int argc, char *argv[])
     |   SampleFreq
     **************************/
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","Device");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","Device");
     UA_Server_addObjectNode(server,                                        // UA_Server *server
@@ -660,29 +665,29 @@ int main(int argc, char *argv[])
 
     // create the DeviceName variable
     // read-only value defined in the configuration file
-    UA_VariableAttributes_init(&attr);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","device name");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DeviceName");
+    attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_Variant_setScalarCopy(&attr.value, DeviceName, &UA_TYPES[UA_TYPES_STRING]);
     UA_Server_addVariableNode(server,                                       // UA_Server *server
                               UA_NODEID_NUMERIC(1, LIBERA_DEVNAME_ID),      // UA_NodeId requestedNewNodeId
                               UA_NODEID_NUMERIC(1, LIBERA_DEVICE_ID),       // UA_NodeId parentNodeId
-                              UA_NODEID_NUMERIC(0, UA_NS0ID_HASCOMPONENT),  // UA_NodeId referenceTypeId
+                              UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),     // UA_NodeId referenceTypeId
                               UA_QUALIFIEDNAME(1, "DeviceName"),            // UA_QualifiedName browseName
-                              UA_NODEID_NULL,                               // UA_NodeId typeDefinition
+                              UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),  // UA_NodeId typeDefinition
                               attr,                                         // UA_VariableAttributes attr
                               NULL,                                         // UA_InstantiationCallback
                               NULL);                                        // UA_NodeId *outNewNodeId
 
-    unsigned int varDevFreq;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDevFreq, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","ADC sample frequency");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","SampleFreq");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource devFreqDataSource = (UA_DataSource)
         {
-            .handle = &varDevFreq,
             .read = mci_get_dev_freq,
             .write = NULL
         };
@@ -692,11 +697,11 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DEVICE_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "SampleFreq"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             devFreqDataSource,
-            NULL);
-
+            NULL, NULL);
+    
     /**************************
     Signals
     |   SP
@@ -711,7 +716,7 @@ int main(int argc, char *argv[])
     |   MaxADC
     **************************/
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","Signals");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","Signals");
     UA_Server_addObjectNode(server,                                        // UA_Server *server
@@ -724,7 +729,7 @@ int main(int argc, char *argv[])
                             NULL,                                          // UA_InstantiationCallback *instantiationCallback
                             NULL);                                         // UA_NodeId *outNewNodeId
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","SP");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","SP");
     UA_Server_addObjectNode(server,
@@ -737,36 +742,36 @@ int main(int argc, char *argv[])
                             NULL,
                             NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_va, &UA_TYPES[UA_TYPES_INT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel A raw signal");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","VA");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource vaDataSource = (UA_DataSource)
         {
-            .handle = &SP_va,           // pointer to the datasource (storage)
-            .read = readInt32,          // read method
-            .write = writeInt32         // write method
+            .read = readInt32,
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
-            UA_NODEID_NUMERIC(1, LIBERA_VA_ID),                 // UA_NodeId requestedNewNodeId
-            UA_NODEID_NUMERIC(1, LIBERA_SP_ID),                 // UA_NodeId parentNodeId
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),           // UA_NodeId referenceTypeId
-            UA_QUALIFIEDNAME(1, "VA"),                          // UA_QualifiedName browseName
-            UA_NODEID_NULL,                                     // UA_NodeId typeDefinition
-            attr,                                               // UA_VariableAttributes attr
-            vaDataSource,                                       // UA_DataSource dataSource
-            NULL);                                              // UA_NodeId *outNewNodeId
+            UA_NODEID_NUMERIC(1, LIBERA_VA_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "VA"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            vaDataSource,
+            &SP_va, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_vb, &UA_TYPES[UA_TYPES_INT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel B raw signal");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","VB");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource vbDataSource = (UA_DataSource)
         {
-            .handle = &SP_vb,
             .read = readInt32,
-            .write = writeInt32
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -774,20 +779,20 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "VB"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             vbDataSource,
-            NULL);
+            &SP_vb, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_vc, &UA_TYPES[UA_TYPES_INT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel C raw signal");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","VC");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource vcDataSource = (UA_DataSource)
         {
-            .handle = &SP_vc,
             .read = readInt32,
-            .write = writeInt32
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -795,20 +800,20 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "VC"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             vcDataSource,
-            NULL);
- 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_vd, &UA_TYPES[UA_TYPES_INT32]);
+            &SP_vc, NULL);
+
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel D raw signal");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","VD");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource vdDataSource = (UA_DataSource)
         {
-            .handle = &SP_vd,
             .read = readInt32,
-            .write = writeInt32
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -816,41 +821,41 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "VD"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             vdDataSource,
-            NULL);
+            &SP_vd, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_charge, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","Bunch charge in pC");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","Charge");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource chargeDataSource = (UA_DataSource)
         {
-            .handle = &SP_charge,       // pointer to the datasource (storage)
-            .read = readDouble,         // read method
-            .write = writeDouble        // write method
+            .read = readDouble,
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
-            UA_NODEID_NUMERIC(1, LIBERA_CHARGE_ID),             // UA_NodeId requestedNewNodeId
-            UA_NODEID_NUMERIC(1, LIBERA_SP_ID),                 // UA_NodeId parentNodeId
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),           // UA_NodeId referenceTypeId
-            UA_QUALIFIEDNAME(1, "Charge"),                      // UA_QualifiedName browseName
-            UA_NODEID_NULL,                                     // UA_NodeId typeDefinition
-            attr,                                               // UA_VariableAttributes attr
-            chargeDataSource,                                   // UA_DataSource dataSource
-            NULL);                                              // UA_NodeId *outNewNodeId
+            UA_NODEID_NUMERIC(1, LIBERA_CHARGE_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "Charge"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            chargeDataSource,
+            &SP_charge, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_pos_x, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","Position X in mm");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","PosX");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource posxDataSource = (UA_DataSource)
         {
-            .handle = &SP_pos_x,
             .read = readDouble,
-            .write = writeDouble
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -858,20 +863,20 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "PosX"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             posxDataSource,
-            NULL);
+            &SP_pos_x, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_pos_y, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","Position Y in mm");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","PosY");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource posyDataSource = (UA_DataSource)
         {
-            .handle = &SP_pos_y,
             .read = readDouble,
-            .write = writeDouble
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -879,20 +884,20 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "PosY"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             posyDataSource,
-            NULL);
+            &SP_pos_y, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &SP_shape_q, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","shape parameter q");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","ShapeQ");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource shapeqDataSource = (UA_DataSource)
         {
-            .handle = &SP_shape_q,
             .read = readDouble,
-            .write = writeDouble
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -900,19 +905,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "ShapeQ"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             shapeqDataSource,
-            NULL);
+            &SP_shape_q, NULL);
 
-    unsigned int varMaxADC;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varMaxADC, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","maximum ADC value");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","MaxADC");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource maxADCDataSource = (UA_DataSource)
         {
-            .handle = &varMaxADC,
             .read = mci_get_maxadc,
             .write = NULL
         };
@@ -922,10 +926,10 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_SIGNALS_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "MaxADC"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             maxADCDataSource,
-            NULL);
+            NULL, NULL);
 
     /**************************
     Stream
@@ -938,7 +942,7 @@ int main(int argc, char *argv[])
     |   Transmit
     **************************/
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","UDP data stream");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","Stream");
     UA_Server_addObjectNode(server,
@@ -951,13 +955,13 @@ int main(int argc, char *argv[])
                             NULL,
                             NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &StreamSourceStatus, &UA_TYPES[UA_TYPES_INT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","Status of the /dev/libera.strm0 source stream");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","StreamStatus");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource streamstatusDataSource = (UA_DataSource)
         {
-            .handle = &StreamSourceStatus,
             .read = readInt32,
             .write = writeInt32
         };
@@ -967,18 +971,19 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "StreamStatus"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             streamstatusDataSource,
-            NULL);
+            &StreamSourceStatus, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &StreamError, &UA_TYPES[UA_TYPES_INT32]);
+
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","Status of the output UDP data stream");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","Error");
+    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource streamerrorDataSource = (UA_DataSource)
         {
-            .handle = &StreamError,
             .read = readInt32,
             .write = writeInt32
         };
@@ -988,36 +993,37 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "Error"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             streamerrorDataSource,
-            NULL);
+            &StreamError, NULL);
 
     // create the StreamSourceIP variable
     // read-only value defined in the configuration file
-    UA_VariableAttributes_init(&attr);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream sender (ourselves)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","SourceIP");
+    attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_Variant_setScalarCopy(&attr.value, StreamSourceIPString, &UA_TYPES[UA_TYPES_STRING]);
     UA_Server_addVariableNode(
             server,
             UA_NODEID_NUMERIC(1, LIBERA_SOURCEIP_ID),
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_HASCOMPONENT),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "SourceIP"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             NULL,
             NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &StreamSourcePort, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","UDP port number of the data stream sender (ourselves)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","SourcePort");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource sourceportDataSource = (UA_DataSource)
         {
-            .handle = &StreamSourcePort,
             .read = readUInt32,
             .write = writeUInt32
         };
@@ -1027,36 +1033,37 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "SourcePort"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             sourceportDataSource,
-            NULL);
+            &StreamSourcePort, NULL);
 
     // create the StreamTargetIP variable
     // read-only value defined in the configuration file
-    UA_VariableAttributes_init(&attr);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream receiver");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","TargetIP");
+    attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_Variant_setScalarCopy(&attr.value, StreamTargetIPString, &UA_TYPES[UA_TYPES_STRING]);
     UA_Server_addVariableNode(
             server,
             UA_NODEID_NUMERIC(1, LIBERA_TARGETIP_ID),
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_HASCOMPONENT),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "TargetIP"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             NULL,
             NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &StreamTargetPort, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","UDP port number of the data stream receiver");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","TargetPort");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource targetportDataSource = (UA_DataSource)
         {
-            .handle = &StreamTargetPort,
             .read = readUInt32,
             .write = writeUInt32
         };
@@ -1066,18 +1073,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "TargetPort"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             targetportDataSource,
-            NULL);
+            &StreamTargetPort, NULL);
 
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &StreamTransmit, &UA_TYPES[UA_TYPES_BOOLEAN]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","data stream open");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","Transmit");
+    attr.dataType = UA_TYPES[UA_TYPES_BOOLEAN].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource transmitDataSource = (UA_DataSource)
         {
-            .handle = &StreamTransmit,
             .read = readBool,
             // special write method which handles the requested opening/closing of the stream
             .write = writeTransmit
@@ -1088,10 +1095,10 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "Transmit"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             transmitDataSource,
-            NULL);
+            &StreamTransmit, NULL);
 
     /**************************
     DSP
@@ -1103,7 +1110,7 @@ int main(int argc, char *argv[])
     |   Averaging
     **************************/
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","DSP");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","DSP");
     UA_Server_addObjectNode(server,
@@ -1116,14 +1123,13 @@ int main(int argc, char *argv[])
                             NULL,
                             NULL);
 
-    bool varDspEnable;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspEnable, &UA_TYPES[UA_TYPES_BOOLEAN]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP enable");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspEnable");
+    attr.dataType = UA_TYPES[UA_TYPES_BOOLEAN].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspEnableDataSource = (UA_DataSource)
         {
-            .handle = &varDspEnable,
             .read = mci_get_dsp_enable,
             .write = mci_set_dsp_enable
         };
@@ -1133,19 +1139,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspEnable"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspEnableDataSource,
-            NULL);
+            NULL, NULL);
 
-    unsigned int varDspThr1;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspThr1, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP bunch threshold 1");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspThr1");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspThr1DataSource = (UA_DataSource)
         {
-            .handle = &varDspThr1,
             .read = mci_get_dsp_thr1,
             .write = mci_set_dsp_thr1
         };
@@ -1155,19 +1160,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspThr1"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspThr1DataSource,
-            NULL);
+            NULL, NULL);
 
-    unsigned int varDspPre;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspPre, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP number of pre-trigger samples");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspPre");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspPreDataSource = (UA_DataSource)
         {
-            .handle = &varDspPre,
             .read = mci_get_dsp_pre,
             .write = mci_set_dsp_pre
         };
@@ -1177,19 +1181,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspPre"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspPreDataSource,
-            NULL);
+            NULL, NULL);
 
-    unsigned int varDspPost1;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspPost1, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP number of samples for first frame");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspPost1");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspPost1DataSource = (UA_DataSource)
         {
-            .handle = &varDspPost1,
             .read = mci_get_dsp_post1,
             .write = mci_set_dsp_post1
         };
@@ -1199,19 +1202,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspPost1"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspPost1DataSource,
-            NULL);
+            NULL, NULL);
 
-    unsigned int varDspTimeout;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspTimeout, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP scan timeout");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspTimeout");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspTimeoutDataSource = (UA_DataSource)
         {
-            .handle = &varDspTimeout,
             .read = mci_get_dsp_timeout,
             .write = mci_set_dsp_timeout
         };
@@ -1221,19 +1223,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspTimeout"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspTimeoutDataSource,
-            NULL);
+            NULL, NULL);
 
-    unsigned int varDspAveraging;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varDspAveraging, &UA_TYPES[UA_TYPES_UINT32]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP averaging");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspAveraging");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource dspAveragingDataSource = (UA_DataSource)
         {
-            .handle = &varDspAveraging,
             .read = mci_get_dsp_averaging,
             .write = mci_set_dsp_averaging
         };
@@ -1243,10 +1244,10 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "DspAveraging"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspAveragingDataSource,
-            NULL);
+            NULL, NULL);
 
     /**************************
     Calibration
@@ -1265,7 +1266,7 @@ int main(int argc, char *argv[])
     |   OffsetSum
     **************************/
 
-    UA_ObjectAttributes_init(&object_attr);
+    object_attr = UA_ObjectAttributes_default;
     object_attr.description = UA_LOCALIZEDTEXT("en_US","Calibration");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","Calibration");
     UA_Server_addObjectNode(server,
@@ -1277,15 +1278,14 @@ int main(int argc, char *argv[])
                             object_attr,
                             NULL,
                             NULL);
-
-    unsigned int varCalAtt;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalAtt, &UA_TYPES[UA_TYPES_UINT32]);
+    
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","attenuator setting");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","Attenuation");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calAttDataSource = (UA_DataSource)
         {
-            .handle = &varCalAtt,
             .read = mci_get_cal_attenuation,
             .write = mci_set_cal_attenuation
         };
@@ -1295,19 +1295,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "Attenuation"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calAttDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalKA;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalKA, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel A calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","KA");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calKADataSource = (UA_DataSource)
         {
-            .handle = &varCalKA,
             .read = mci_get_cal_ka,
             .write = mci_set_cal_ka
         };
@@ -1317,19 +1316,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "KA"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calKADataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalKB;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalKB, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel B calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","KB");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calKBDataSource = (UA_DataSource)
         {
-            .handle = &varCalKB,
             .read = mci_get_cal_kb,
             .write = mci_set_cal_kb
         };
@@ -1339,19 +1337,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "KB"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calKBDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalKC;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalKC, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel C calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","KC");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calKCDataSource = (UA_DataSource)
         {
-            .handle = &varCalKC,
             .read = mci_get_cal_kc,
             .write = mci_set_cal_kc
         };
@@ -1361,19 +1358,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "KC"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calKCDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalKD;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalKD, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","channel D calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","KD");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calKDDataSource = (UA_DataSource)
         {
-            .handle = &varCalKD,
             .read = mci_get_cal_kd,
             .write = mci_set_cal_kd
         };
@@ -1383,19 +1379,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "KD"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calKDDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalLinX;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalLinX, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","position X calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","LinearX");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calLinXDataSource = (UA_DataSource)
         {
-            .handle = &varCalLinX,
             .read = mci_get_cal_linx,
             .write = mci_set_cal_linx
         };
@@ -1405,19 +1400,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "LinearX"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calLinXDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalLinY;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalLinY, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","position Y calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","LinearY");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calLinYDataSource = (UA_DataSource)
         {
-            .handle = &varCalLinY,
             .read = mci_get_cal_liny,
             .write = mci_set_cal_liny
         };
@@ -1427,19 +1421,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "LinearY"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calLinYDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalLinQ;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalLinQ, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","shape Q calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","LinearQ");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calLinQDataSource = (UA_DataSource)
         {
-            .handle = &varCalLinQ,
             .read = mci_get_cal_linq,
             .write = mci_set_cal_linq
         };
@@ -1449,19 +1442,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "LinearQ"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calLinQDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalLinS;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalLinS, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","sum calibration factor");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","LinearS");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calLinSDataSource = (UA_DataSource)
         {
-            .handle = &varCalLinS,
             .read = mci_get_cal_lins,
             .write = mci_set_cal_lins
         };
@@ -1471,20 +1463,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "LinearS"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calLinSDataSource,
-            NULL);
+            NULL, NULL);
 
-
-    double varCalOffX;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalOffX, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","position X offset");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","OffsetX");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calOffXDataSource = (UA_DataSource)
         {
-            .handle = &varCalOffX,
             .read = mci_get_cal_offx,
             .write = mci_set_cal_offx
         };
@@ -1494,19 +1484,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "OffsetX"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calOffXDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalOffY;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalOffY, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","position Y offset");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","OffsetY");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calOffYDataSource = (UA_DataSource)
         {
-            .handle = &varCalOffY,
             .read = mci_get_cal_offy,
             .write = mci_set_cal_offy
         };
@@ -1516,19 +1505,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "OffsetY"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calOffYDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalOffQ;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalOffQ, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","shape Q offset");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","OffsetQ");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calOffQDataSource = (UA_DataSource)
         {
-            .handle = &varCalOffQ,
             .read = mci_get_cal_offq,
             .write = mci_set_cal_offq
         };
@@ -1538,19 +1526,18 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "OffsetQ"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calOffQDataSource,
-            NULL);
+            NULL, NULL);
 
-    double varCalOffS;
-    UA_VariableAttributes_init(&attr);
-    UA_Variant_setScalar(&attr.value, &varCalOffS, &UA_TYPES[UA_TYPES_DOUBLE]);
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","sum offset");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","OffsetS");
+    attr.dataType = UA_TYPES[UA_TYPES_DOUBLE].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calOffSDataSource = (UA_DataSource)
         {
-            .handle = &varCalOffS,
             .read = mci_get_cal_offs,
             .write = mci_set_cal_offs
         };
@@ -1560,10 +1547,10 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(1, LIBERA_CAL_ID),
             UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
             UA_QUALIFIEDNAME(1, "OffsetS"),
-            UA_NODEID_NULL,
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             calOffSDataSource,
-            NULL);
+            NULL, NULL);
 
     // open the data stream
     fd = open("/dev/libera.strm0", O_RDONLY);
@@ -1592,9 +1579,10 @@ int main(int argc, char *argv[])
     // run the server (forever unless stopped with ctrl-C)
     UA_StatusCode retval = UA_Server_run(server, &running);
 
-    // the server has stopped running
+    if(retval != UA_STATUSCODE_GOOD)
+        printf("UA_Server_run() error %8x\n", retval);
+
     UA_Server_delete(server);
-    nl.deleteMembers(&nl);
     printf("OpcUaServer : stopped running.\n");
 
     // wait for the read thread to exit
