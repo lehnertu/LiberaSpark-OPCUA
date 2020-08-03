@@ -24,63 +24,9 @@ SOFTWARE.
 
 /** @mainpage OpcUaServer for the Libera Spark E/L beam position monitors
  *
- *  Version 0.4  2017/02/16
+ *  Version 1.1  2020/08/03
  *
  *  @author U. Lehnert, Helmholtz-Zentrum Dresden-Rossendorf
- *
- *  This is an OPC UA server running on the
- *  [Libera Spark](http://www.i-tech.si/announcements/performance-reliability-cost-effectiveness--libera-spark)
- *  beam position monitor electronics
- *  for remote control of the devices.
- *  
- *  It is based on the [Open62541](https://github.com/open62541/open62541/)
- *  open source implementation of OPC UA.
- *  
- *  @section Functionality
- *  - Provides an OPC-UA server at TCP/IP port 16664.
- *  - Server configuration is loadad from file /nvram/cfg/opcua.xml
- *  - The /dev/libera.strm0 is captured to obtain the measured data.
- *  - When enabled, all data from strm0 is sent out to an UDP output stream.
- *  - Access to device configuration parameters is handled with the MCI facility.
- *
- *  The server compiles and runs stabily on the power supply used for the tests.
- *  All functionality necessary to user the supllies to power corrector coils
- *  in an accelerator control system environment is provided. This does not
- *  cover the whole functionality provided by the devices, only the essentials.
- *  
- *  @section Build
- *  The server is built with a cross-compiler running on a Linux system
- *  for the ARM target CPU of the device.
- *  
- *  The OPC UA stack needs to be downloaded and built. This can be done on
- *  the development system - there is no binary code produced at this stage.
- *  The complete stack is obtained in two (amalgamated) files.
- *  - open62541.h
- *  - open62541.c
- *  Presently, we use version 1.1 of the OPC UA stack.
- *  
- *  In addition the libxml2 library is required. It needs to be built
- *  and installed into the cross-target tool chain.
- *  
- *  A Makefile is provided, normally just the first line has to be edited to point to
- *  the correct location of the tool chain.
- *
- *  @section Installation
- *  For istallation a few files need to be copied onto the device:
- *  - opcuaserver binary installed in /opt/opcua/opcuaserver
- *  - opcua.xml configuration file in /nvram/cfg/opcua.xml
- *  - libxml2.so.2 in /usr/lib/
- *
- *  The server can then be run by executing /opt/opcua/opcuaserver.
- * 
- *  @section Testing
- *  For a first test of the server an universal OPC UA client like
- *  [UaExpert](https://www.unified-automation.com/products/development-tools/uaexpert.html) is recommended.
- *
- *  A LabView client demonstrating the access using OPC UA is provided in the examples/ folder.
- *
- *  @section TODO
- *  - clean exit problem when UDP stream is never opened
  *
  */
 
@@ -151,19 +97,15 @@ static double SP_pos_x = 0.0;
 static double SP_pos_y = 0.0;
 static double SP_shape_q = 0.0;
 
-// error codes
-#define UDP_STREAM_CLOSED -1
-#define UDP_STREAM_NO_SOCKET -2
-#define UDP_STREAM_GOOD 1
-
 // primary storage of the data streaming information
-static int32_t StreamSourceStatus = -1;
-static int32_t StreamError = -1;
-static bool StreamTransmit = false;
-static uint32_t StreamSourceIP = 0;         // 10.66.67.20
-static uint32_t StreamSourcePort = 0;
+static bool StreamEnable = false;
+static int32_t StreamStatus = -1;
+static uint32_t StreamSourceIP = 0;         // 10.66.67.21
+static uint64_t StreamSourceMAC = 0;		// 01:26:32:00:06:D4
+static uint32_t StreamSourcePort = 2048;
 static uint32_t StreamTargetIP = 0;         // 10.66.67.1
-static uint32_t StreamTargetPort = 0;
+static uint64_t StreamTargetMAC = 0;		// 00:40:9e:04:15:3a
+static uint32_t StreamTargetPort = 2048;
 
 // the OPC-UA variables hosted by this server
 /*
@@ -184,13 +126,14 @@ static uint32_t StreamTargetPort = 0;
     |   |   ShapeQ
     |   MaxADC
     Stream
-    |   StreamStatus
-    |   Error
+    |   Enable
+    |   Status
     |   SourceIP
+    |   SourceMAC
     |   SourcePort
     |   TargetIP
+    |   TargetMAC
     |   TargetPort
-    |   Transmit
     DSP
     |   Enable
     |   BunchThr1
@@ -231,13 +174,14 @@ static uint32_t StreamTargetPort = 0;
 #define LIBERA_SHAPEQ_ID  50140
 #define LIBERA_MAXADC_ID  50200
 #define LIBERA_STREAM_ID 51000
-#define LIBERA_STREAMSTATUS_ID 51100
-#define LIBERA_STREAMERROR_ID 51110
-#define LIBERA_SOURCEIP_ID 51200
-#define LIBERA_SOURCEPORT_ID 51210
-#define LIBERA_TARGETIP_ID 51300
-#define LIBERA_TARGETPORT_ID 51310
-#define LIBERA_TRANSMIT_ID 51400
+#define LIBERA_STREAMENABLE_ID 51100
+#define LIBERA_STREAMSTATUS_ID 51200
+#define LIBERA_SOURCEIP_ID 51310
+#define LIBERA_SOURCEMAC_ID 51320
+#define LIBERA_SOURCEPORT_ID 51330
+#define LIBERA_TARGETIP_ID 51410
+#define LIBERA_TARGETMAC_ID 51420
+#define LIBERA_TARGETPORT_ID 51430
 #define LIBERA_DSP_ID 52000
 #define LIBERA_DSP_ENABLE_ID 52010
 #define LIBERA_DSP_THR1_ID 52020
@@ -286,123 +230,15 @@ static void stopHandler(int signal)
 /***********************************/
 /* stream data handling            */
 /***********************************/
+
 /*
     The main programm never acesses any of the streaming data structures.
     All it does is fork off the readStream() thread. That one handles reading
     the data frpm the Libera data stream and update the internal storage
     of the OPC-UA Variables.
-
-    When a client requestes an UDP data stream (by writing StreamTransmit=true)
-    the datasource write routine opens the output UDP stream.
-    If this goes without errors the readStream() thread now also
-    sends out any received data packet via UDP.
-
-    The UDP stream is closed again when a client requests that
-    or write errors occur.
 */
 
-// header structure needed for checksum calculation
-struct pseudo_header
-{
-    u_int32_t source_address;
-    u_int32_t dest_address;
-    u_int8_t placeholder;
-    u_int8_t protocol;
-    u_int16_t udp_length;
-};
- 
-// data structures for the UDP output stream
-static int udp_socket;
-uint32_t udp_counter;		           // counter for transmitted UDP packets
-static struct sockaddr_in udp_server;
-static struct in_addr udp_source;	   // IP address of this BPM
-static struct in_addr udp_target;	   // IP address of the server the data is sent to
-
-// generic checksum calculation function
-unsigned short csum(unsigned short *ptr, int nbytes)
-{
-    register long sum;
-    unsigned short oddbyte;
-    register short answer;
-    sum=0;
-    while(nbytes>1) {
-        sum+=*ptr++;
-        nbytes-=2;
-    }
-    if(nbytes==1) {
-        oddbyte=0;
-        *((unsigned char*)&oddbyte)=*(unsigned char*)ptr;
-        sum+=oddbyte;
-    }
-    sum = (sum>>16)+(sum & 0xffff);
-    sum = sum + (sum>>16);
-    answer=(short)~sum;
-    return(answer);
-}
-
-// open the output stream
-int openStreamUDP()
-{
-    int err = UDP_STREAM_GOOD;
-    printf("OpcUaServer : open UDP data stream\n");
-    udp_counter = 0;
-    // create a raw socket of type IPPROTO
-    udp_socket = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-    if(udp_socket == -1)
-    {
-        printf("OpcUaServer : Failed to create raw socket. Maybe not permitted?\n");
-        err = UDP_STREAM_NO_SOCKET;
-    };
-    // set addresses for the UDP output stream
-    udp_source.s_addr = StreamSourceIP;
-    udp_target.s_addr = StreamTargetIP;
-    // compile the server address
-    udp_server.sin_family = AF_INET;
-    udp_server.sin_addr.s_addr = udp_target.s_addr;
-    udp_server.sin_port = htons(StreamTargetPort);
-    printf("OpcUaServer : UDP source IP %s (%d) port %d\n",inet_ntoa(udp_source), udp_source.s_addr, StreamSourcePort);
-    printf("OpcUaServer : sending data to IP: %s (%d) port %d\n",inet_ntoa(udp_target), udp_target.s_addr, StreamTargetPort);
-    return err;
-}
-
-// close the output stream
-int closeStreamUDP()
-{
-    printf("OpcUaServer : close UDP data stream\n");
-    int status = close(udp_socket);
-    if (status==-1) printf("OpcUaServer : error closing the UDPsocket\n");
-    return UDP_STREAM_CLOSED;
-}
-
-// special datasource write routine for the Stream/Transmit Variable
-// when writing to this datasource the UDP data stream is opened/closed appropriately
-UA_StatusCode writeTransmit(
-    UA_Server *server,
-    const UA_NodeId *sessionId, void *sessionContext,
-    const UA_NodeId *nodeId, void *nodeContext,
-    const UA_NumericRange *range,
-    const UA_DataValue *data)
-{
-    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->value.data != 0))
-    {
-        bool opcl = *(bool*)data->value.data;
-		StreamTransmit = opcl;		
-        if (opcl == true)
-            StreamError = openStreamUDP();
-        if (opcl == false)
-            StreamError = closeStreamUDP();
-        return UA_STATUSCODE_GOOD;
-    }
-    else
-    {
-        StreamError = -2;
-		printf("data error : writeTransmit\n");
-        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
-    }
-}
-
 // read the data from the input stream
-// when requested copy the data to the output UDP stream
 // TODO: if the stream never has any data, the thread blocks
 void* readStream(void *arg)
 {
@@ -414,19 +250,6 @@ void* readStream(void *arg)
     printf("OpcUaServer : reading from fd=%d\n",fd);
     // the record points just to the first block in the read buffer
     record = (struct single_pass_data *) readbuffer;
-
-    struct pseudo_header psh;	        // header for checksum calculation
-    char pseudogram[BUFFERSIZE];	    // datagram for checksum calculation
-    char udp_buffer[BUFFERSIZE];	    // UDP packet buffer
-    // the IP header is at the beginning of the buffer
-    struct iphdr *iph = (struct iphdr *) udp_buffer;
-    // the UDP header follows after the IP header
-    struct udphdr *udph = (struct udphdr *) (udp_buffer + sizeof(struct iphdr));
-    // pointer to the payload within the data buffer
-    char *databuffer = (char *)(udp_buffer + sizeof(struct iphdr) + sizeof(struct udphdr));
-    int PAYLOADSIZE = BUFFERSIZE - sizeof(struct iphdr) - sizeof (struct udphdr);
-    if (BLOCKSIZE>PAYLOADSIZE)
-        Die("Insufficient buffer size\n");
 
     while (running)
     {
@@ -451,51 +274,6 @@ void* readStream(void *arg)
             SP_pos_y = 1.e-6 * record->y;
             SP_charge = 0.0001 * record->sum;
             SP_shape_q = 1.e-6 * record->q;
-            // if requested write packet to UDP stream
-            if (StreamTransmit && (StreamError == UDP_STREAM_GOOD))
-            {
-                udp_counter++;
-                // clear the packet buffer
-                memset(udp_buffer, 0, BUFFERSIZE);
-                // fill in the data
-                memcpy(databuffer, readbuffer, BLOCKSIZE);
-                // fill in the IP Header
-                iph->ihl = 5;
-                iph->version = 4;
-                iph->tos = 0;
-                iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + BLOCKSIZE;
-                iph->id = udp_counter;               // Id of this packet
-                iph->frag_off = 0;
-                iph->ttl = 255;
-                iph->protocol = IPPROTO_UDP;
-                iph->check = 0;			             // set to 0 before calculating checksum
-                iph->saddr = udp_source.s_addr;      // spoof the source IP address
-                iph->daddr = udp_target.s_addr;      // receiver IP address
-                // IP checksum
-                iph->check = csum ((unsigned short *) udp_buffer, iph->tot_len);
-                // UDP header
-                udph->source = htons (StreamSourcePort);
-                udph->dest = htons (StreamTargetPort);
-                udph->len = htons(8 + BLOCKSIZE);    // tcp header size
-                udph->check = 0;                     // leave checksum 0 now, filled later from pseudo header
-                // now compute the UDP checksum using the pseudo header
-                psh.source_address = udp_source.s_addr;
-                psh.dest_address = udp_target.s_addr;
-                psh.placeholder = 0;
-                psh.protocol = IPPROTO_UDP;
-                psh.udp_length = htons(sizeof(struct udphdr) + BLOCKSIZE );
-                memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-                memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + BLOCKSIZE);
-                int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + BLOCKSIZE;
-                udph->check = csum( (unsigned short*) pseudogram , psize);
-                //Send the packet
-                if (sendto (udp_socket, udp_buffer, iph->tot_len ,  0, (struct sockaddr *) &udp_server, sizeof (udp_server)) < 0)
-                {
-                    StreamTransmit = false;
-                    fprintf(stderr, "OpcUaServer : error sending UDP data stream\n");
-                    StreamError = closeStreamUDP();
-                };
-            };
         };
     };
     printf("OpcUaServer : read thread exit\n");
