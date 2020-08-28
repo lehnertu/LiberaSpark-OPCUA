@@ -41,9 +41,13 @@ mci::Node node_root;
 mci::Node node_dev_freq;
 mci::Node node_dsp_enable;
 mci::Node node_dsp_thr1;
+mci::Node node_dsp_thr2;
 mci::Node node_dsp_pre;
 mci::Node node_dsp_post1;
+mci::Node node_dsp_post2;
+mci::Node node_dsp_offset;
 mci::Node node_dsp_timeout;
+mci::Node node_dsp_zeros;
 mci::Node node_dsp_averaging;
 mci::Node node_maxadc;
 mci::Node node_cal_attenuation;
@@ -59,6 +63,14 @@ mci::Node node_cal_offx;
 mci::Node node_cal_offy;
 mci::Node node_cal_offq;
 mci::Node node_cal_offs;
+mci::Node node_gbe_enable;
+mci::Node node_gbe_status;
+mci::Node node_gbe_src_ip;
+mci::Node node_gbe_src_mac;
+mci::Node node_gbe_src_port;
+mci::Node node_gbe_tgt_ip;
+mci::Node node_gbe_tgt_mac;
+mci::Node node_gbe_tgt_port;
 
 int mci_error;
 
@@ -93,6 +105,12 @@ int mci_init()
         mci_error = 2;
         printf("MCI node error : application.dsp.bunch_thr1\n");
     };
+    node_dsp_thr2 = node_root.GetNode(mci::Tokenize("application.dsp.bunch_thr2"));
+    if (!node_dsp_thr2.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.dsp.bunch_thr2\n");
+    };
     node_dsp_pre = node_root.GetNode(mci::Tokenize("application.dsp.pre_trigger"));
     if (!node_dsp_pre.IsValid())
     {
@@ -104,6 +122,18 @@ int mci_init()
     {
         mci_error = 2;
         printf("MCI node error : application.dsp.post_trigger1\n");
+    };
+    node_dsp_post2 = node_root.GetNode(mci::Tokenize("application.dsp.post_trigger2"));
+    if (!node_dsp_post2.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.dsp.post_trigger2\n");
+    };
+    node_dsp_offset = node_root.GetNode(mci::Tokenize("application.dsp.scan_offset"));
+    if (!node_dsp_offset.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.dsp.scan_offset\n");
     };
     node_dsp_timeout = node_root.GetNode(mci::Tokenize("application.dsp.scan_timeout"));
     if (!node_dsp_timeout.IsValid())
@@ -118,6 +148,12 @@ int mci_init()
         printf("MCI node error : application.dsp.data_averaging\n");
     };
     node_maxadc = node_root.GetNode(mci::Tokenize("application.input.max_adc"));
+    node_dsp_zeros = node_root.GetNode(mci::Tokenize("application.dsp.insert_zeros"));
+    if (!node_dsp_zeros.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.dsp.insert_zeros\n");
+    };
     if (!node_maxadc.IsValid())
     {
         mci_error = 2;
@@ -200,6 +236,54 @@ int mci_init()
     {
         mci_error = 2;
         printf("MCI node error : application.calibration.linear.sum.offs\n");
+    };
+    node_gbe_enable = node_root.GetNode(mci::Tokenize("application.gbe.enable"));
+    if (!node_gbe_enable.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.enable\n");
+    };
+    node_gbe_status = node_root.GetNode(mci::Tokenize("application.gbe.status"));
+    if (!node_gbe_status.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.status\n");
+    };
+    node_gbe_src_ip = node_root.GetNode(mci::Tokenize("application.gbe.src.ip"));
+    if (!node_gbe_src_ip.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.src.ip\n");
+    };
+    node_gbe_src_mac = node_root.GetNode(mci::Tokenize("application.gbe.src.mac"));
+    if (!node_gbe_src_mac.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.src.mac\n");
+    };
+    node_gbe_src_port = node_root.GetNode(mci::Tokenize("application.gbe.src.port"));
+    if (!node_gbe_src_port.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.src.port\n");
+    };
+    node_gbe_tgt_ip = node_root.GetNode(mci::Tokenize("application.gbe.dest.ip"));
+    if (!node_gbe_tgt_ip.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.dest.ip\n");
+    };
+    node_gbe_tgt_mac = node_root.GetNode(mci::Tokenize("application.gbe.dest.mac"));
+    if (!node_gbe_tgt_mac.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.dest.mac\n");
+    };
+    node_gbe_tgt_port = node_root.GetNode(mci::Tokenize("application.gbe.dest.port"));
+    if (!node_gbe_tgt_port.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.gbe.dest.port\n");
     };
     return(mci_error);
 }
@@ -332,6 +416,55 @@ UA_StatusCode mci_set_dsp_thr1(
     }
 }
 
+UA_StatusCode mci_get_dsp_thr2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_dsp_thr2.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.dsp.bunch_thr2\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_dsp_thr2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_dsp_thr2.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.dsp.bunch_thr2\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_dsp_thr2\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
 UA_StatusCode mci_get_dsp_pre(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
@@ -430,6 +563,104 @@ UA_StatusCode mci_set_dsp_post1(
     }
 }
 
+UA_StatusCode mci_get_dsp_post2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_dsp_post2.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.dsp.post_trigger2\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_dsp_post2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_dsp_post2.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.dsp.post_trigger2\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_dsp_post2\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_dsp_offset(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_dsp_offset.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.dsp.scan_offset\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_dsp_offset(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_dsp_offset.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.dsp.scan_offset\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_dsp_offset\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
 UA_StatusCode mci_get_dsp_timeout(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
@@ -524,6 +755,55 @@ UA_StatusCode mci_set_dsp_averaging(
     else
     {
 		printf("data error : mci_set_dsp_averaging\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_dsp_zeros(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    bool val;
+    if(node_dsp_zeros.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_Boolean*)(&val), &UA_TYPES[UA_TYPES_BOOLEAN]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.dsp.insert_zeros\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_dsp_zeros(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->value.data != 0))
+    {
+        bool val = *(bool*)data->value.data;
+        if(node_dsp_zeros.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.dsp.insert_zeros\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_dsp_zeros\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
@@ -1184,6 +1464,388 @@ UA_StatusCode mci_set_cal_offs(
     else
     {
 		printf("data error : mci_set_cal_offs\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_enable(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    bool val;
+    if(node_gbe_enable.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_Boolean*)(&val), &UA_TYPES[UA_TYPES_BOOLEAN]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.enable\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_enable(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_BOOLEAN]) && (data->value.data != 0))
+    {
+        bool val = *(bool*)data->value.data;
+        if(node_gbe_enable.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.enable\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_gbe_enable\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_status(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_gbe_status.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_Int32*)(&val), &UA_TYPES[UA_TYPES_INT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.status\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_src_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    std::string s;
+    if(node_gbe_src_ip.GetValue(s))
+    {
+		const char *buf = s.c_str();
+		UA_String BufString = UA_String_fromChars(buf);
+        UA_Variant_setScalarCopy(&dataValue->value, &BufString, &UA_TYPES[UA_TYPES_STRING]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.src.ip\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_src_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_STRING]) && (data->value.data != 0))
+    {
+		UA_String *uas = (UA_String *)data->value.data;
+		std::string s((char *)uas->data,uas->length);
+        if(node_gbe_src_ip.SetValue(s))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.src.ip : %s\n",s.c_str());
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+		return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+		printf("data error : mci_set_src_ip\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_src_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    std::string s;
+    if(node_gbe_src_mac.GetValue(s))
+    {
+		const char *buf = s.c_str();
+		UA_String BufString = UA_String_fromChars(buf);
+        UA_Variant_setScalarCopy(&dataValue->value, &BufString, &UA_TYPES[UA_TYPES_STRING]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.src.mac\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_src_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_STRING]) && (data->value.data != 0))
+    {
+		UA_String *uas = (UA_String *)data->value.data;
+		std::string s((char *)uas->data,uas->length);
+        if(node_gbe_src_mac.SetValue(s))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.src.mac : %s\n",s.c_str());
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+		return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+		printf("data error : mci_set_src_mac\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_src_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_gbe_src_port.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.src.port\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_src_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_gbe_src_port.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.src.port\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_gbe_src_port\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_tgt_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    std::string s;
+    if(node_gbe_tgt_ip.GetValue(s))
+    {
+		const char *buf = s.c_str();
+		UA_String BufString = UA_String_fromChars(buf);
+        UA_Variant_setScalarCopy(&dataValue->value, &BufString, &UA_TYPES[UA_TYPES_STRING]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.tgt.ip\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_tgt_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_STRING]) && (data->value.data != 0))
+    {
+		UA_String *uas = (UA_String *)data->value.data;
+		std::string s((char *)uas->data,uas->length);
+        if(node_gbe_tgt_ip.SetValue(s))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.tgt.ip : %s\n",s.c_str());
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+		return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+		printf("data error : mci_set_tgt_ip\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_tgt_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    std::string s;
+    if(node_gbe_tgt_mac.GetValue(s))
+    {
+		const char *buf = s.c_str();
+		UA_String BufString = UA_String_fromChars(buf);
+        UA_Variant_setScalarCopy(&dataValue->value, &BufString, &UA_TYPES[UA_TYPES_STRING]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.tgt.mac\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_tgt_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_STRING]) && (data->value.data != 0))
+    {
+		UA_String *uas = (UA_String *)data->value.data;
+		std::string s((char *)uas->data,uas->length);
+        if(node_gbe_tgt_mac.SetValue(s))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.tgt.mac : %s\n",s.c_str());
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+		return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+		printf("data error : mci_set_tgt_mac\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_gbe_tgt_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_gbe_tgt_port.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.gbe.dest.port\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_gbe_tgt_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_gbe_tgt_port.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.gbe.dest.port\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_gbe_tgt_port\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }

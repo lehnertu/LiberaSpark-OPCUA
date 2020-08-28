@@ -40,6 +40,7 @@ SOFTWARE.
 #include <sys/stat.h>        // for fstat()
 #include <stdlib.h>		     // for exit()
 #include <signal.h>		     // for signal()
+#include <sys/time.h>		 	 // for clock
 #include <errno.h>		     // for error messages
 #include <pthread.h>         // for threads
 
@@ -87,26 +88,6 @@ struct single_pass_data {
 // the OPC-UA server
 UA_Server *server;
 
-// primary storage of the current values
-static int32_t SP_va = 0;
-static int32_t SP_vb = 0;
-static int32_t SP_vc = 0;
-static int32_t SP_vd = 0;
-static double SP_charge = 0.0;
-static double SP_pos_x = 0.0;
-static double SP_pos_y = 0.0;
-static double SP_shape_q = 0.0;
-
-// primary storage of the data streaming information
-static bool StreamEnable = false;
-static int32_t StreamStatus = -1;
-static uint32_t StreamSourceIP = 0;         // 10.66.67.21
-static uint64_t StreamSourceMAC = 0;		// 01:26:32:00:06:D4
-static uint32_t StreamSourcePort = 2048;
-static uint32_t StreamTargetIP = 0;         // 10.66.67.1
-static uint64_t StreamTargetMAC = 0;		// 00:40:9e:04:15:3a
-static uint32_t StreamTargetPort = 2048;
-
 // the OPC-UA variables hosted by this server
 /*
     Server
@@ -125,6 +106,7 @@ static uint32_t StreamTargetPort = 2048;
     |   |   PosY
     |   |   ShapeQ
     |   MaxADC
+	|   StreamPPS
     Stream
     |   Enable
     |   Status
@@ -137,10 +119,14 @@ static uint32_t StreamTargetPort = 2048;
     DSP
     |   Enable
     |   BunchThr1
+    |   BunchThr2
     |   PreTrig
     |   PostTrig1
+    |   PostTrig2
+    |   ScanOffset
     |   ScanTimeout
     |   Averaging
+    |   InsertZeros	
     Calibration
     |   AttID
     |   KA
@@ -173,6 +159,7 @@ static uint32_t StreamTargetPort = 2048;
 #define LIBERA_POSY_ID  50130
 #define LIBERA_SHAPEQ_ID  50140
 #define LIBERA_MAXADC_ID  50200
+#define LIBERA_STREAMPPS_ID  50300
 #define LIBERA_STREAM_ID 51000
 #define LIBERA_STREAMENABLE_ID 51100
 #define LIBERA_STREAMSTATUS_ID 51200
@@ -185,10 +172,14 @@ static uint32_t StreamTargetPort = 2048;
 #define LIBERA_DSP_ID 52000
 #define LIBERA_DSP_ENABLE_ID 52010
 #define LIBERA_DSP_THR1_ID 52020
+#define LIBERA_DSP_THR2_ID 52021
 #define LIBERA_DSP_PRE_ID 52030
 #define LIBERA_DSP_POST1_ID 52040
+#define LIBERA_DSP_POST2_ID 52041
+#define LIBERA_DSP_OFFSET_ID 52045
 #define LIBERA_DSP_TIMEOUT_ID 52050
 #define LIBERA_DSP_AVERAGING_ID 52060
+#define LIBERA_DSP_ZEROS_ID 52070
 #define LIBERA_CAL_ID 54000
 #define LIBERA_CAL_ATT_ID 54010
 #define LIBERA_CAL_KA_ID 54110
@@ -238,14 +229,31 @@ static void stopHandler(int signal)
     of the OPC-UA Variables.
 */
 
+// Primary storage of the stream data values.
+// These values are read and published by the OPC UA server.
+static int32_t SP_cps = 0;		// packet counts per second
+static int32_t SP_va = 0;
+static int32_t SP_vb = 0;
+static int32_t SP_vc = 0;
+static int32_t SP_vd = 0;
+static double SP_charge = 0.0;
+static double SP_pos_x = 0.0;
+static double SP_pos_y = 0.0;
+static double SP_shape_q = 0.0;
+
 // read the data from the input stream
 // TODO: if the stream never has any data, the thread blocks
 void* readStream(void *arg)
 {
-    long int counter = 0;
-    char readbuffer[BUFFERSIZE];        // buffer for reading from the datat stream
+    char readbuffer[BUFFERSIZE];        // buffer for reading from the data stream
     struct single_pass_data *record;    // pointer to one data block
-    
+	struct timeval t;   				// clock for counting packets per second
+	time_t last_s;						// second of the last time counting
+	static int32_t SP_counter = 0;		// packet counter
+
+    gettimeofday(&t, NULL);
+	last_s = t.tv_sec;
+
     int fd = *((int *)arg);
     printf("OpcUaServer : reading from fd=%d\n",fd);
     // the record points just to the first block in the read buffer
@@ -260,20 +268,28 @@ void* readStream(void *arg)
             int errsv=errno;
             fprintf(stderr, "OpcUaServer : read() from data stream");
             // usleep(100000);
-            sleep(0.1);
+            // sleep(0.1);
         };
         // handle proper data blocks
         if (BLOCKSIZE==bytes_read)
         {
-            counter++;
+            SP_counter++;
             SP_va = record->va;
             SP_vb = record->vb;
             SP_vc = record->vc;
             SP_vd = record->vd;
-            SP_pos_x = 1.e-6 * record->x;
-            SP_pos_y = 1.e-6 * record->y;
             SP_charge = 0.0001 * record->sum;
             SP_shape_q = 1.e-6 * record->q;
+            SP_pos_x = 1.e-6 * record->x;
+            SP_pos_y = 1.e-6 * record->y;
+			// if the second has changes from last time we count the number of packets received
+		    gettimeofday(&t, NULL);
+			if (t.tv_sec != last_s)
+			{
+				SP_cps = SP_counter;
+				SP_counter = 0;
+				last_s = t.tv_sec;
+			}
         };
     };
     printf("OpcUaServer : read thread exit\n");
@@ -307,6 +323,7 @@ int main(int argc, char *argv[])
     doc = xmlReadFile("/nvram/cfg/opcua.xml", NULL, 0);
     if (doc == NULL)
         Die("OpcUaServer : Failed to parse XML config file\n");
+
     // get the root element node
     xmlNode *rootNode = xmlDocGetRootElement(doc);
     xmlNode *configurationNode = NULL;
@@ -316,6 +333,7 @@ int main(int argc, char *argv[])
                 configurationNode = currNode;
     if (configurationNode == NULL)
         Die("OpcUaServer : Failed to find XML <configuration> root node\n");
+
     xmlNode *opcuaNode = NULL;
     for (xmlNode *currNode = configurationNode->children; currNode; currNode = currNode->next)
         if (currNode->type == XML_ELEMENT_NODE)
@@ -323,6 +341,7 @@ int main(int argc, char *argv[])
                 opcuaNode = currNode;
     if (opcuaNode == NULL)
         Die("OpcUaServer : Failed to find XML <opcua> node\n");
+
     xmlNode *deviceNode = NULL;
     for (xmlNode *currNode = opcuaNode->children; currNode; currNode = currNode->next)
         if (currNode->type == XML_ELEMENT_NODE)
@@ -330,6 +349,7 @@ int main(int argc, char *argv[])
                 deviceNode = currNode;
     if (deviceNode == NULL)
         Die("OpcUaServer : Failed to find XML <opcua/device> node\n");
+
     xmlChar *devicenameProp = xmlGetProp(deviceNode,"name");
     buflen = xmlStrPrintf(buf, 80, "%s", devicenameProp);
     if (buflen == 0)
@@ -339,72 +359,10 @@ int main(int argc, char *argv[])
     BufString = UA_STRING(buf);
     UA_String *DeviceName = UA_String_new();
     UA_String_copy(&BufString, DeviceName);
-    xmlNode *streamNode = NULL;
-    for (xmlNode *currNode = configurationNode->children; currNode; currNode = currNode->next)
-        if (currNode->type == XML_ELEMENT_NODE)
-            if (! strcmp(currNode->name, "stream"))
-                streamNode = currNode;
-    if (streamNode == NULL)
-        Die("OpcUaServer : Failed to find XML <stream> node\n");
-    xmlNode *streamsourceNode = NULL;
-    for (xmlNode *currNode = streamNode->children; currNode; currNode = currNode->next)
-        if (currNode->type == XML_ELEMENT_NODE)
-            if (! strcmp(currNode->name, "source"))
-                streamsourceNode = currNode;
-    if (streamsourceNode == NULL)
-        Die("OpcUaServer : Failed to find XML <stream/sorce> node\n");
-    xmlChar *sourceipProp = xmlGetProp(streamsourceNode,"ip");
-    buflen = xmlStrPrintf(buf, 80, "%s", sourceipProp);
-    if (buflen == 0)
-        Die("OpcUaServer : Failed to read XML <stream/source> ip property\n");
-    buf[buflen] = '\0';         // string termination
-    printf("OpcUaServer : StreamSourceIP=%s\n", buf);
-    BufString = UA_STRING(buf);
-    UA_String *StreamSourceIPString = UA_String_new();
-    UA_String_copy(&BufString, StreamSourceIPString);
-    StreamSourceIP = inet_addr(buf);
-    if (StreamSourceIP == INADDR_NONE)
-        Die("OpcUaServer : Failed to read XML <stream/source> ip property\n");
-    xmlChar *sourceportProp = xmlGetProp(streamsourceNode,"port");
-    buflen = xmlStrPrintf(buf, 80, "%s", sourceportProp);
-    if (buflen == 0)
-        Die("OpcUaServer : Failed to read XML <stream/source> port property\n");
-    buf[buflen] = '\0';         // string termination
-    if (sscanf(buf, "%d", &StreamSourcePort) != 1)
-        Die("OpcUaServer : Failed to read XML <stream/source> port property\n");
-    xmlNode *streamtargetNode = NULL;
-    for (xmlNode *currNode = streamNode->children; currNode; currNode = currNode->next)
-        if (currNode->type == XML_ELEMENT_NODE)
-            if (! strcmp(currNode->name, "target"))
-                streamtargetNode = currNode;
-    if (streamtargetNode == NULL)
-        Die("OpcUaServer : Failed to find XML <stream/target> node\n");
-    xmlChar *targetipProp = xmlGetProp(streamtargetNode,"ip");
-    buflen = xmlStrPrintf(buf, 80, "%s", targetipProp);
-    if (buflen == 0)
-        Die("OpcUaServer : Failed to read XML <stream/target> ip property\n");
-    buf[buflen] = '\0';         // string termination
-    printf("OpcUaServer : StreamTargetIP=%s\n", buf);
-    BufString = UA_STRING(buf);
-    UA_String *StreamTargetIPString = UA_String_new();
-    UA_String_copy(&BufString, StreamTargetIPString);
-    StreamTargetIP = inet_addr(buf);
-    if (StreamTargetIP == INADDR_NONE)
-        Die("OpcUaServer : Failed to read XML <stream/target> ip property\n");
-    xmlChar *targetportProp = xmlGetProp(streamtargetNode,"port");
-    buflen = xmlStrPrintf(buf, 80, "%s", targetportProp);
-    if (buflen == 0)
-        Die("OpcUaServer : Failed to read XML <stream/target> port property\n");
-    buf[buflen] = '\0';         // string termination
-    if (sscanf(buf, "%d", &StreamTargetPort) != 1)
-        Die("OpcUaServer : Failed to read XML <stream/target> port property\n");
+
     // done with the XML document
     xmlFreeDoc(doc);
     xmlCleanupParser();
-
-    // server will be running until we receive a SIGINT or SIGTERM
-    signal(SIGINT,  stopHandler);
-    signal(SIGTERM, stopHandler);
 
     // configure the UA server
     UA_ServerConfig config;
@@ -492,6 +450,7 @@ int main(int argc, char *argv[])
     |   |   PosY
     |   |   ShapeQ
     |   MaxADC
+	|   StreamPPS
     **************************/
 
     object_attr = UA_ObjectAttributes_default;
@@ -709,19 +668,41 @@ int main(int argc, char *argv[])
             maxADCDataSource,
             NULL, NULL);
 
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","stream0 packet rate");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","StreamPPS");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
+    UA_DataSource streamPPSDataSource = (UA_DataSource)
+        {
+            .read = readUInt32,
+            .write = NULL
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_STREAMPPS_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_SIGNALS_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "StreamPPS"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            streamPPSDataSource,
+            &SP_cps, NULL);
+
     /**************************
     Stream
-    |   StreamStatus
-    |   TransmissionStatus
+    |   Enable
+    |   Status
     |   SourceIP
+    |   SourceMAC
     |   SourcePort
     |   TargetIP
+    |   TargetMAC
     |   TargetPort
-    |   Transmit
     **************************/
 
     object_attr = UA_ObjectAttributes_default;
-    object_attr.description = UA_LOCALIZEDTEXT("en_US","UDP data stream");
+    object_attr.description = UA_LOCALIZEDTEXT("en_US","fast GBE data stream");
     object_attr.displayName = UA_LOCALIZEDTEXT("en_US","Stream");
     UA_Server_addObjectNode(server,
                             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
@@ -734,14 +715,35 @@ int main(int argc, char *argv[])
                             NULL);
 
     attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","Status of the /dev/libera.strm0 source stream");
+    attr.description = UA_LOCALIZEDTEXT("en_US","data stream enabled");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","Enable");
+    attr.dataType = UA_TYPES[UA_TYPES_BOOLEAN].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource enableDataSource = (UA_DataSource)
+        {
+            .read = mci_get_gbe_enable,
+            .write = mci_set_gbe_enable
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_STREAMENABLE_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "Enable"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            enableDataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","Status of the fast GBE stream");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","StreamStatus");
     attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
-    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
     UA_DataSource streamstatusDataSource = (UA_DataSource)
         {
-            .read = readInt32,
-            .write = writeInt32
+            .read = mci_get_gbe_status,
+            .write = NULL
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -752,39 +754,19 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             streamstatusDataSource,
-            &StreamSourceStatus, NULL);
-
+            NULL, NULL);
 
     attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","Status of the output UDP data stream");
-    attr.displayName = UA_LOCALIZEDTEXT("en_US","Error");
-    attr.dataType = UA_TYPES[UA_TYPES_INT32].typeId;
-    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
-    UA_DataSource streamerrorDataSource = (UA_DataSource)
-        {
-            .read = readInt32,
-            .write = writeInt32
-        };
-    UA_Server_addDataSourceVariableNode(
-            server,
-            UA_NODEID_NUMERIC(1, LIBERA_STREAMERROR_ID),
-            UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
-            UA_QUALIFIEDNAME(1, "Error"),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
-            attr,
-            streamerrorDataSource,
-            &StreamError, NULL);
-
-    // create the StreamSourceIP variable
-    // read-only value defined in the configuration file
-    attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream sender (ourselves)");
+    attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream sender (device)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","SourceIP");
     attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
-    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
-    UA_Variant_setScalarCopy(&attr.value, StreamSourceIPString, &UA_TYPES[UA_TYPES_STRING]);
-    UA_Server_addVariableNode(
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource sourceIPDataSource = (UA_DataSource)
+        {
+            .read = mci_get_gbe_src_ip,
+            .write = mci_set_gbe_src_ip
+        };
+    UA_Server_addDataSourceVariableNode(
             server,
             UA_NODEID_NUMERIC(1, LIBERA_SOURCEIP_ID),
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
@@ -792,18 +774,39 @@ int main(int argc, char *argv[])
             UA_QUALIFIEDNAME(1, "SourceIP"),
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
-            NULL,
-            NULL);
+            sourceIPDataSource,
+            NULL, NULL);
 
     attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","UDP port number of the data stream sender (ourselves)");
+    attr.description = UA_LOCALIZEDTEXT("en_US","MAC of the data stream sender (device)");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","SourceMAC");
+    attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource sourceMACDataSource = (UA_DataSource)
+        {
+            .read = mci_get_gbe_src_mac,
+            .write = mci_set_gbe_src_mac
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_SOURCEMAC_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "SourceMAC"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            sourceMACDataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","port number of the data stream sender (device)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","SourcePort");
     attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource sourceportDataSource = (UA_DataSource)
         {
-            .read = readUInt32,
-            .write = writeUInt32
+            .read = mci_get_gbe_src_port,
+            .write = mci_set_gbe_src_port
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -814,17 +817,19 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             sourceportDataSource,
-            &StreamSourcePort, NULL);
+            NULL, NULL);
 
-    // create the StreamTargetIP variable
-    // read-only value defined in the configuration file
     attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream receiver");
+    attr.description = UA_LOCALIZEDTEXT("en_US","IP number of the data stream receiver (host)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","TargetIP");
     attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
-    attr.accessLevel = UA_ACCESSLEVELMASK_READ;
-    UA_Variant_setScalarCopy(&attr.value, StreamTargetIPString, &UA_TYPES[UA_TYPES_STRING]);
-    UA_Server_addVariableNode(
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource targetIPDataSource = (UA_DataSource)
+        {
+            .read = mci_get_gbe_tgt_ip,
+            .write = mci_set_gbe_tgt_ip
+        };
+    UA_Server_addDataSourceVariableNode(
             server,
             UA_NODEID_NUMERIC(1, LIBERA_TARGETIP_ID),
             UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
@@ -832,18 +837,39 @@ int main(int argc, char *argv[])
             UA_QUALIFIEDNAME(1, "TargetIP"),
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
-            NULL,
-            NULL);
+            targetIPDataSource,
+            NULL, NULL);
 
     attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","UDP port number of the data stream receiver");
+    attr.description = UA_LOCALIZEDTEXT("en_US","MAC of the data stream receiver (host)");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","TargetMAC");
+    attr.dataType = UA_TYPES[UA_TYPES_STRING].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource targetMACDataSource = (UA_DataSource)
+        {
+            .read = mci_get_gbe_tgt_mac,
+            .write = mci_set_gbe_tgt_mac
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_TARGETMAC_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "TargetMAC"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            targetMACDataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","port number of the data stream receiver (host)");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","TargetPort");
     attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource targetportDataSource = (UA_DataSource)
         {
-            .read = readUInt32,
-            .write = writeUInt32
+            .read = mci_get_gbe_tgt_port,
+            .write = mci_set_gbe_tgt_port
         };
     UA_Server_addDataSourceVariableNode(
             server,
@@ -854,38 +880,20 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             targetportDataSource,
-            &StreamTargetPort, NULL);
-
-    attr = UA_VariableAttributes_default;
-    attr.description = UA_LOCALIZEDTEXT("en_US","data stream open");
-    attr.displayName = UA_LOCALIZEDTEXT("en_US","Transmit");
-    attr.dataType = UA_TYPES[UA_TYPES_BOOLEAN].typeId;
-    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
-    UA_DataSource transmitDataSource = (UA_DataSource)
-        {
-            .read = readBool,
-            // special write method which handles the requested opening/closing of the stream
-            .write = writeTransmit
-        };
-    UA_Server_addDataSourceVariableNode(
-            server,
-            UA_NODEID_NUMERIC(1, LIBERA_TRANSMIT_ID),
-            UA_NODEID_NUMERIC(1, LIBERA_STREAM_ID),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
-            UA_QUALIFIEDNAME(1, "Transmit"),
-            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
-            attr,
-            transmitDataSource,
-            &StreamTransmit, NULL);
+            NULL, NULL);
 
     /**************************
     DSP
     |   Enable
     |   BunchThr1
+    |   BunchThr2
     |   PreTrig
     |   PostTrig1
+    |   PostTrig2
+    |   ScanOffset
     |   ScanTimeout
     |   Averaging
+    |   InsertZeros	
     **************************/
 
     object_attr = UA_ObjectAttributes_default;
@@ -944,6 +952,27 @@ int main(int argc, char *argv[])
             NULL, NULL);
 
     attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","DSP bunch threshold 2");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","DspThr2");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource dspThr2DataSource = (UA_DataSource)
+        {
+            .read = mci_get_dsp_thr2,
+            .write = mci_set_dsp_thr2
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_THR2_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "DspThr2"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            dspThr2DataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","DSP number of pre-trigger samples");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","DspPre");
     attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
@@ -983,6 +1012,48 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspPost1DataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","DSP number of samples for first frame");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","DspPost2");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource dspPost2DataSource = (UA_DataSource)
+        {
+            .read = mci_get_dsp_post2,
+            .write = mci_set_dsp_post2
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_POST2_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "DspPost2"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            dspPost2DataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","DSP scan offset");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","DspOffset");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource dspOffsetDataSource = (UA_DataSource)
+        {
+            .read = mci_get_dsp_offset,
+            .write = mci_set_dsp_offset
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_OFFSET_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "DspOffset"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            dspOffsetDataSource,
             NULL, NULL);
 
     attr = UA_VariableAttributes_default;
@@ -1027,6 +1098,27 @@ int main(int argc, char *argv[])
             dspAveragingDataSource,
             NULL, NULL);
 
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","DSP insert zeros");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","DspInsertZeros");
+    attr.dataType = UA_TYPES[UA_TYPES_BOOLEAN].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource dspZerosDataSource = (UA_DataSource)
+        {
+            .read = mci_get_dsp_zeros,
+            .write = mci_set_dsp_zeros
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ZEROS_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "DspInsertZeros"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            dspZerosDataSource,
+            NULL, NULL);
+
     /**************************
     Calibration
     |   AttID
@@ -1060,7 +1152,7 @@ int main(int argc, char *argv[])
     attr = UA_VariableAttributes_default;
     attr.description = UA_LOCALIZEDTEXT("en_US","attenuator setting");
     attr.displayName = UA_LOCALIZEDTEXT("en_US","Attenuation");
-    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.dataType = UA_TYPES[UA_TYPES_INT64].typeId;
     attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
     UA_DataSource calAttDataSource = (UA_DataSource)
         {
@@ -1331,6 +1423,9 @@ int main(int argc, char *argv[])
             NULL, NULL);
 
     // open the data stream
+		// we use non-blocking mode so the read thread keep going and can exit even if no data is received
+	    // fd = open("/dev/libera.strm0", O_RDONLY | O_NONBLOCK);
+		// non-blocking mode is a bad idea - the stream will never be closed again
     fd = open("/dev/libera.strm0", O_RDONLY);
     if (fd == -1)
     {
@@ -1354,7 +1449,9 @@ int main(int argc, char *argv[])
     else
         printf("OpcUaServer : read thread created successfully\n");
 
-    // run the server (forever unless stopped with ctrl-C)
+    // server will be running until we receive a SIGINT or SIGTERM
+    signal(SIGINT,  stopHandler);
+    signal(SIGTERM, stopHandler);
     UA_StatusCode retval = UA_Server_run(server, &running);
 
     if(retval != UA_STATUSCODE_GOOD)
@@ -1367,10 +1464,8 @@ int main(int argc, char *argv[])
     pthread_join(tid, NULL);
 
     status = close(fd);
-    if (-1==status) perror("OpcUaServer : close source stream");
-    else printf("OpcUaServer : data stream closed.\n");
-
-    if (StreamTransmit) closeStreamUDP();
+    if (-1==status) perror("OpcUaServer : error closing source data stream");
+    else printf("OpcUaServer : source data stream closed.\n");
 
     mci_shutdown();
 

@@ -80,6 +80,20 @@ UA_StatusCode mci_set_dsp_thr1(
     const UA_NumericRange *range,
     const UA_DataValue *data);
 
+UA_StatusCode mci_get_dsp_thr2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_dsp_thr2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
 UA_StatusCode mci_get_dsp_pre(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
@@ -108,6 +122,34 @@ UA_StatusCode mci_set_dsp_post1(
     const UA_NumericRange *range,
     const UA_DataValue *data);
 
+UA_StatusCode mci_get_dsp_post2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_dsp_post2(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_dsp_offset(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_dsp_offset(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
 UA_StatusCode mci_get_dsp_timeout(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
@@ -130,6 +172,20 @@ UA_StatusCode mci_get_dsp_averaging(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_dsp_averaging(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_dsp_zeros(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_dsp_zeros(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
     const UA_NodeId *nodeId, void *nodeContext,
@@ -320,6 +376,112 @@ UA_StatusCode mci_get_cal_offs(
     const UA_NumericRange *range,
     UA_DataValue *dataValue);
 UA_StatusCode mci_set_cal_offs(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_enable(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_enable(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_status(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+
+UA_StatusCode mci_get_gbe_src_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_src_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_src_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_src_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_src_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_src_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_tgt_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_tgt_ip(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_tgt_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_tgt_mac(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
+UA_StatusCode mci_get_gbe_tgt_port(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_gbe_tgt_port(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,
     const UA_NodeId *nodeId, void *nodeContext,
