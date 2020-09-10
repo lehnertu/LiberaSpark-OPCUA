@@ -126,6 +126,7 @@ UA_Server *server;
     |   ScanOffset
     |   ScanTimeout
     |   Averaging
+    |   NetAveraging
     |   InsertZeros	
     Calibration
     |   AttID
@@ -179,6 +180,7 @@ UA_Server *server;
 #define LIBERA_DSP_OFFSET_ID 52045
 #define LIBERA_DSP_TIMEOUT_ID 52050
 #define LIBERA_DSP_AVERAGING_ID 52060
+#define LIBERA_DSP_NET_AVERAGING_ID 52061
 #define LIBERA_DSP_ZEROS_ID 52070
 #define LIBERA_CAL_ID 54000
 #define LIBERA_CAL_ATT_ID 54010
@@ -893,6 +895,7 @@ int main(int argc, char *argv[])
     |   ScanOffset
     |   ScanTimeout
     |   Averaging
+    |   NetAveraging
     |   InsertZeros	
     **************************/
 
@@ -1096,6 +1099,27 @@ int main(int argc, char *argv[])
             UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
             attr,
             dspAveragingDataSource,
+            NULL, NULL);
+
+    attr = UA_VariableAttributes_default;
+    attr.description = UA_LOCALIZEDTEXT("en_US","GBE data averaging");
+    attr.displayName = UA_LOCALIZEDTEXT("en_US","NetAveraging");
+    attr.dataType = UA_TYPES[UA_TYPES_UINT32].typeId;
+    attr.accessLevel = UA_ACCESSLEVELMASK_READ | UA_ACCESSLEVELMASK_WRITE;
+    UA_DataSource dspNetAveragingDataSource = (UA_DataSource)
+        {
+            .read = mci_get_dsp_net_averaging,
+            .write = mci_set_dsp_net_averaging
+        };
+    UA_Server_addDataSourceVariableNode(
+            server,
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_NET_AVERAGING_ID),
+            UA_NODEID_NUMERIC(1, LIBERA_DSP_ID),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES),
+            UA_QUALIFIEDNAME(1, "NetAveraging"),
+            UA_NODEID_NUMERIC(0, UA_NS0ID_BASEDATAVARIABLETYPE),
+            attr,
+            dspNetAveragingDataSource,
             NULL, NULL);
 
     attr = UA_VariableAttributes_default;

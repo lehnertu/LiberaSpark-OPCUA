@@ -178,6 +178,20 @@ UA_StatusCode mci_set_dsp_averaging(
     const UA_NumericRange *range,
     const UA_DataValue *data);
 
+UA_StatusCode mci_get_dsp_net_averaging(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue);
+UA_StatusCode mci_set_dsp_net_averaging(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data);
+
 UA_StatusCode mci_get_dsp_zeros(
     UA_Server *server,
     const UA_NodeId *sessionId, void *sessionContext,

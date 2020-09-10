@@ -49,6 +49,7 @@ mci::Node node_dsp_offset;
 mci::Node node_dsp_timeout;
 mci::Node node_dsp_zeros;
 mci::Node node_dsp_averaging;
+mci::Node node_dsp_net_averaging;
 mci::Node node_maxadc;
 mci::Node node_cal_attenuation;
 mci::Node node_cal_ka;
@@ -146,6 +147,12 @@ int mci_init()
     {
         mci_error = 2;
         printf("MCI node error : application.dsp.data_averaging\n");
+    };
+    node_dsp_net_averaging = node_root.GetNode(mci::Tokenize("application.dsp.net_data_averaging"));
+    if (!node_dsp_averaging.IsValid())
+    {
+        mci_error = 2;
+        printf("MCI node error : application.dsp.net_data_averaging\n");
     };
     node_maxadc = node_root.GetNode(mci::Tokenize("application.input.max_adc"));
     node_dsp_zeros = node_root.GetNode(mci::Tokenize("application.dsp.insert_zeros"));
@@ -755,6 +762,55 @@ UA_StatusCode mci_set_dsp_averaging(
     else
     {
 		printf("data error : mci_set_dsp_averaging\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_get_dsp_net_averaging(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    UA_Boolean sourceTimeStamp,
+    const UA_NumericRange *range,
+    UA_DataValue *dataValue)
+{
+    unsigned int val;
+    if(node_dsp_net_averaging.GetValue(val))
+    {
+        UA_Variant_setScalarCopy(&dataValue->value, (UA_UInt32*)(&val), &UA_TYPES[UA_TYPES_UINT32]);
+        dataValue->hasValue = true;
+        return UA_STATUSCODE_GOOD;
+    }
+    else
+    {
+        mci_error = 3;
+        printf("MCI value error : application.dsp.net_data_averaging\n");
+        return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+    }
+}
+
+UA_StatusCode mci_set_dsp_net_averaging(
+    UA_Server *server,
+    const UA_NodeId *sessionId, void *sessionContext,
+    const UA_NodeId *nodeId, void *nodeContext,
+    const UA_NumericRange *range,
+    const UA_DataValue *data)
+{
+    if(data->hasValue && UA_Variant_isScalar(&data->value) && (data->value.type == &UA_TYPES[UA_TYPES_UINT32]) && (data->value.data != 0))
+    {
+        unsigned int val = *(unsigned int*)data->value.data;
+        if(node_dsp_net_averaging.SetValue(val))
+            return UA_STATUSCODE_GOOD;
+        else
+        {
+            mci_error = 4;
+            printf("MCI value error : application.dsp.net_data_averaging\n");
+            return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
+        }
+    }
+    else
+    {
+		printf("data error : mci_set_dsp_net_averaging\n");
         return UA_STATUSCODE_UNCERTAINNOCOMMUNICATIONLASTUSABLEVALUE;
     }
 }
