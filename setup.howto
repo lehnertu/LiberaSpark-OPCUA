@@ -1,0 +1,142 @@
+#######################
+# network setup       #
+#######################
+
+# connect laptop to PowerDsine DATA-IN
+# connect Libera to PowerDSine DATA/POWER-OUT
+power led on - OK
+
+# deactivate networking from notebook desktop
+# configure notebook interface to be in same network
+sudo /sbin/ifconfig eth0 192.168.1.78
+ping 192.168.1.100 - OK
+
+ssh root@192.168.1.100
+- accept ECDSA fingerprint
+- account:root passwd:Jungle
+
+########### neue Netzwerkadresse (statisch) ###############
+
+root@libera:/# mount -w -o remount /dev/mtdblock1 /nvram
+root@libera:/# cd /nvram/
+root@libera:/nvram# mkdir -p /nvram/etc/network
+root@libera:/nvram# cp /etc/network/templates/nvram/etc/network/eth0_static /nvram/etc/network/
+root@libera:/nvram# nano /nvram/etc/network/eth0_static
+    # or vi
+root@libera:/nvram# mount -r -o remount /dev/mtdblock1 /nvram
+
+###############################################################
+
+#!/bin/sh
+#
+# Libera static network script
+#
+# Edit & copy to /nvram/etc/network/eth0_static for static network configuration.
+#
+
+# Static network configuration
+ADDRESS=10.66.67.20
+NETMASK=255.255.255.0
+GATEWAY=10.66.67.1
+# DNS=192.168.1.1
+
+# NFS share for /opt. Leave blank for SD card.
+NFS=
+
+
+echo "Setting static network configuration:"
+echo "  ADDRESS: ${ADDRESS}"
+echo "  NETMASK: ${NETMASK}"
+echo "  GATEWAY: ${GATEWAY}"
+echo "  DNS: ${DNS}"
+ifconfig eth0 ${ADDRESS} netmask ${NETMASK} up
+route add default gw ${GATEWAY}
+echo "nameserver ${DNS}" > /etc/resolv.conf
+
+# Wait for the eth0 link-up
+sleep 8
+
+# Mount /opt application persistent storage
+/etc/init.d/opt_mount ${NFS}
+
+
+########################################
+# set sampling frequency               #
+########################################
+
+:/# libera-ireg dump application.clock_info
+clock_info
+  adc_frequency=111000000
+
+# desired value 117.0 MHz = 13 MHz * 9
+/opt/etc/init.d/S50libera-spark-l stop
+mount -o remount,rw /opt
+vi /opt/libera/sbin/cfg/libera-spark-l.xml
+    <clk_frequency value="117000000"/>
+
+# edit other values as needed (networking etc.)
+
+mount -o remount,ro /opt
+/opt/etc/init.d/S50libera-spark-l start
+
+# !!! the actually used file resides in /nvram/cfg/libera-spark-l.xml
+
+########################################
+# set internal trigger                 #
+########################################
+
+libera-ireg dump application.triggers
+libera-ireg application.triggers.t2.source=Internal
+libera-ireg application.triggers.t2.prescaler=146250
+libera-ireg system.persistence.save{}
+
+Prescaler kann gesetzt werden, obwohl er nicht im Dump erscheint.
+117 MHz / 146250 / 2 ergibt 400Hz Triggerrate. (max. ca. 450)
+
+########################################
+# install OPC UA server                #
+########################################
+
+# install the configuration file for the OPC UA server
+mount -w -o remount /dev/mtdblock1 /nvram
+cd /nvram/cfg/
+scp lehnertu@10.66.67.1:Libera/libera26.opcua.xml ./opcua.xml
+    <configuration>
+        <stream>
+            <source ip="10.66.67.26" port="1024"/>
+            <target ip="10.66.67.1" port="16720"/>
+        </stream>
+        <opcua>
+            <device name="IN2-DSL.06"/>
+        </opcua>
+    </configuration>
+mount -r -o remount /dev/mtdblock1 /nvram
+
+# install the OPC UA server
+mount -o remount,rw /opt
+cd /opt
+mkdir opcua
+cd opcua
+scp lehnertu@10.66.67.1:Libera/LiberaSpark-OPCUA/opcuaserver .
+
+# change configuration of libera software
+# so it doesn't grab the /dev/libera.strm0 stream - we need it
+/opt/etc/init.d/S50libera-spark-l stop
+vi /opt/libera/sbin/cfg/libera-spark-l.conf
+    [feature]
+    stream_history = false
+/opt/etc/init.d/S50libera-spark-l start
+mount -o remount,ro /opt
+
+# at present we start the OPC UA server manually
+/opt/opcua/opcuaserver &
+# TODO: put this in the startup scripts !!!
+mount -o remount,rw /opt
+vi /opt/etc/init.d/S99local
+    # we have to wait for the MCI services to be available
+    sleep 20s
+    # start OPC UA server
+    export LD_LIBRARY_PATH=/lib:/opt/libera/lib
+    /opt/opcua/opcuaserver > /var/log/opcua.log 2> /var/log/opcua.error &
+mount -o remount,ro /opt
+
