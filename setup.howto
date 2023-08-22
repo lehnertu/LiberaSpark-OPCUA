@@ -140,3 +140,26 @@ vi /opt/etc/init.d/S99local
     /opt/opcua/opcuaserver > /var/log/opcua.log 2> /var/log/opcua.error &
 mount -o remount,ro /opt
 
+
+########################################
+# configure acquisition                #
+########################################
+
+IN2-DSL.06 (Libera26)
+---------------------
+optimized for 50 kHz CW
+
+kill OPCUA server
+/opt/etc/init.d/S50libera-spark-l stop
+mount -w -o remount /dev/mtdblock1 /nvram
+vi /nvram/cfg/libera-spark-l.xml
+mount -w -o remount /dev/mtdblock1 /nvram
+reboot now
+
+Taktfrequenz 117 MHz : <clk_frequency value="117000000"/>
+prescaler for 16*400 Hz trigger rate : <t2><prescaler value="9140"/>
+FIFO size between FPGA and application : <sp_group_size value="16"/>
+single-bunch flavor : <num_of_bunches value="1"/>
+averaging over bunches : <data_averaging value="16"/>
+
+
